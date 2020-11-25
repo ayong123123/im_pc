@@ -2,24 +2,13 @@
 <html>
 <head>
   <script>
-
-    // window.hostIm="http://10.50.215.94:18400";
-    // window.wsHostIm="ws://10.50.215.94:18400/dgg";
-    // window.host="http://10.50.215.94:8002";
-
-    // window.hostIm="http://10.50.215.94:18300";
-    // window.wsHostIm="ws://10.50.215.94:18300/dgg";
-    // window.host="http://10.50.215.94:8002";
-
-
-    window.hostIm="http://chat.miapp66.com";
-    window.wsHostIm="ws://chat.miapp66.com/dgg";
-    window.host="http://webapi.miapp66.com";
+    window.hostIm="localhost";
+    window.wsHostIm="ws://localhost";
+    window.host="http://localhost";
 
     window.md5 = "mq7ijz5gha5e35as";
     window.aes = "cex7t2p21ligyb2s";
-    // window.webName = '赢胜米聊';
-    window.webName = '澳博米聊';
+    window.webName = '米聊';
     let index = window.hostIm.lastIndexOf("\/");
     let str = window.hostIm.substring(index+1,window.hostIm.length);
     window.localUploadUrl= str + "/api/uploadFile/upload";
