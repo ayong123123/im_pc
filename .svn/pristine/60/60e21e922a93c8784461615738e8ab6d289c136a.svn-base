@@ -1,0 +1,432 @@
+<!-- 消息框 -->
+<template>
+  <div >
+    <div class="user-chat-message" v-if="chatListStore.chatlist.length > 0">
+      <header class="header flex-between"  @mousedown="windowMove($event)">
+        <div class="friendname" v-if="selectedChat.chatType !== undefined">
+          {{selectedChat.chatType == 2 ? friendsListStore.groupChatInfoList.data.group_name : selectedChat.user.remarks_name ? selectedChat.user.remarks_name  : selectedChat.user.name}}
+          <span v-if="selectedChat.chatType == 2">({{friendsListStore.groupChatInfoList.data.count}})</span>
+        </div>
+        <span class="chat-more-icon"  @click="setChatRightBoxState(true)" v-if="selectedChat.chatType == 2"></span>
+        <span class="chat-more-icon"  @click="getFriendInfo" v-if="selectedChat.chatType == 1"></span>
+      </header>
+      <div class="have-people-findme" v-if="getFindMeMsg.length > 0 && getFindMeState && selectedChat.chatType == 2">
+        <div v-for="(i,index) in getFindMeMsg" @click="gogaoHidden = !gogaoHidden">
+          <span v-if="i.describe || i.type == config.MSG_GROUP_NOTICE">群公告</span>
+          <span v-else-if="i.type == config.MSG_GROUP_AT || i.type == config.MSG_GROUP_AT_ALL">有人@你</span>
+          <span v-else-if="i.type == config.MSG_GROUP_REMOVEPERSON">移出群聊</span>
+          <div :class="{'long-text':gogaoHidden}">{{i.describe || i.groupmessage.content}}</div>
+        </div>
+        <img src="@/assets/weChat/gg_up.png" alt="" v-if="!gogaoHidden" @click="gogaoHidden = true">
+        <img src="@/assets/weChat/gg_close.png" alt="" v-else @click="closeGonggao()">
+      </div>
+      <div class="message-wrapper" :class="{on:msgListStore.activeTyep == 3}" ref="list" id="chat-list">
+        <ul v-if="selectedChat && getChatList && msgListStore.activeTyep != 3">
+          <li class="message-item more-history">
+            <div @click="getHistory">
+              查看更多消息
+            </div>
+          </li>
+          <li v-for="item in getChatList" class="message-item">
+            <wx-chat-text :msg="item" v-show="item.type == config.MSG_PRIVATE_TXT || item.type == config.MSG_GROUP_TXT  || item.type == config.MSG_GROUP_NOTICE  || item.type == config.MSG_GROUP_AT || item.type == config.MSG_GROUP_AT_ALL" @setFindUser="getFindUser" @messageBack="messageBack(item)"  @reSendMessage="reSendMessage(item)"  @getZhuanFa="getZhuanFa(item)" @openConfig="openConfig"></wx-chat-text>
+            <wx-chat-images :msg="item" v-show="item.type == config.MSG_PRIVATE_IMG || item.type == config.MSG_GROUP_IMG"  @setFindUser="getFindUser" @messageBack="messageBack(item)"  @getZhuanFa="getZhuanFa(item)"  @openConfig="openConfig"  @reSendMessage="reSendMessage(item)"></wx-chat-images>
+            <wx-chat-redpack :msg="item"  v-if="item.type == config.MSG_PRIVATE_RED || item.type == config.MSG_GROUP_RED"  @setFindUser="getFindUser"  @reSendMessage="reSendMessage(item)"></wx-chat-redpack>
+            <!--转账-->
+            <wx-chat-transfer :msg="item"  v-if="item.type == config.MSG_MONEY_TRANSFER || item.type == config.MSG_MONEY_TRANSFER"  @setFindUser="getFindUser"  @reSendMessage="reSendMessage(item)"></wx-chat-transfer>
+            <!--牛牛红包-->
+            <wx-chat-bullpack :msg="item" v-if="item.type == config.MSG_RED_COW" @setFindUser="getFindUser"  @reSendMessage="reSendMessage(item)"></wx-chat-bullpack>
+            <wx-chat-sweeppack :msg="item" v-if="item.type == config.MSG_RED_LANDMINE" @setFindUser="getFindUser"  @reSendMessage="reSendMessage(item)"></wx-chat-sweeppack>
+            <wx-chat-dragonpack :msg="item" v-if="item.type == config.MSG_RED_DRAGON" @setFindUser="getFindUser"  @reSendMessage="reSendMessage(item)"></wx-chat-dragonpack>
+            <wx-user-card  :msg="item" v-if="item.type == config.MSG_GROUP_CARD || item.type == config.MSG_PRIVATE_CARD" @setFindUser="getFindUser" @messageBack="messageBack(item)"  @reSendMessage="reSendMessage(item)" @getZhuanFa="getZhuanFa(item)"  @openConfig="openConfig"></wx-user-card>
+            <wx-redpack-message :msg="item"  v-if="item.type == config.MSG_PRIVATE_ROB || item.type == config.MSG_GROUP_ROB"></wx-redpack-message>
+            <wx-newUserInto :msg="item" v-if="item.type == config.MSG_GROUP_INGROUP || item.type == config.MSG_PRIVATE_AGREEADDFRIEND"></wx-newUserInto>
+            <wx-chat-audio :msg="item" v-if="item.type == config.MSG_GROUP_AUDIO || item.type == config.MSG_PRIVATE_AUDIO" @setFindUser="getFindUser"   @messageBack="messageBack(item)" @audioPaused="otherAudioPaused(getChatList)"></wx-chat-audio>
+            <wx-chat-video :msg="item" v-if="item.type == config.MSG_GROUP_VIDEO || item.type == config.MSG_PRIVATE_VIDEO" @setFindUser="getFindUser"  @reSendMessage="reSendMessage(item)" @messageBack="messageBack(item)"  @getZhuanFa="getZhuanFa(item)" @openConfig="openConfig"></wx-chat-video>
+            <wx-chat-sign :msg="item" v-if="item.type == config.MSG_GROUP_SIGN || item.type == config.MSG_PRIVATE_SIGN" ></wx-chat-sign>
+            <wx-da-shang :msg="item" v-if="item.type == config.MSG_GROUP_DASHANG || item.type == config.MSG_PRIVATE_DASHANG" ></wx-da-shang>
+
+            <wx-share-record :msg="item" v-if="item.type == config.MSG_GROUP_SHARE || item.type == config.MSG_PRIVATE_SHARE" @setFindUser="getFindUser"  @reSendMessage="reSendMessage(item)" @messageBack="messageBack(item)"></wx-share-record>
+
+            <wx-share-order :msg="item" v-if="item.type == config.MSG_GROUP_SHARENOTE || item.type == config.MSG_PRIVATE_SHARENOTE" @setFindUser="getFindUser"  @reSendMessage="reSendMessage(item)" @messageBack="messageBack(item)"></wx-share-order>
+
+            <wx-sharePlan :msg="item" v-if="item.type == config.MSG_GROUP_PLAN"   @reSendMessage="reSendMessage(item)" @messageBack="messageBack(item)"></wx-sharePlan>
+            <!--转发撤回询问弹窗-->
+            <wx-config  :msg="item"  @messageBack="messageBack"  @getZhuanFa="getZhuanFa" :configData="configData" @closeConfig="closeConfig"></wx-config>
+          </li>
+          <!--<li  class="message-item">-->
+            <!--<wx-remind-you></wx-remind-you>-->
+          <!--</li>-->
+
+          <!--<li class="message-item">-->
+          <!--<wx-message-back></wx-message-back>-->
+          <!--</li>-->
+        </ul>
+        <ul v-else>
+          <li class="message-item more-history">
+            <div @click="getHistory">
+              查看更多
+            </div>
+          </li>
+          <li  v-for="item in wechatIMstore.mergeNoticeList.data">
+            <system-gongGao :msg="item"></system-gongGao>
+          </li>
+        </ul>
+
+      </div>
+    </div>
+    <div class="not-message" v-else >
+      &nbsp; 暂无聊天记录 快找好友聊聊天吧
+    </div>
+    <div class="newMessage" @click="goBottom" v-if="wechatIMstore.isGoDown && chatListStore.chatlist && chatListStore.chatlist.length > 0">
+      <img src="../../../assets/weChat/goDownNow.png" alt="">
+    </div>
+    <!--重发消息弹窗-->
+
+    <!--转发选择好友弹窗-->
+    <wx-transpond v-if="transpondData.visible" :transpondData="transpondData" @closeTranspond="closeTranspond"></wx-transpond>
+
+  </div>
+</template>
+
+<script>
+  import { mapGetters, mapState ,mapMutations ,mapActions} from 'vuex'
+  import _config from '@/configWX/configWX'
+  export default {
+      data(){
+        return {
+          config:_config,
+          systemPage:1,
+          transpondData:{
+            visible:false,
+          },
+          configData:{
+            visible:false,
+            data:''
+          },
+          chongFaDetail:'',
+          gogaoHidden:true
+          // xinXiaoXi:0, // 新消息数
+        }
+      },
+    created(){
+      //  刷新页面 拉取 消息
+      if(this.chatListStore.chatlist.length > 0){
+        if(this.msgListStore.activeTyep*1 == 1){
+//          let friendArr = this.msgListStore.friendMsgMap[this.msgListStore.activeWindowId].msgList
+//          if(friendArr.length > 0){
+//            //            向下拉取单聊
+//            let unique_value = friendArr[friendArr.length - 1].unique_value
+//            this.getJudegMessageAction({send_uid:this.getUserId,accept_uid:this.msgListStore.activeWindowId,uniqueId:unique_value,isUpDown:1})
+//          }else {
+            // 无记录 拉取最新记录
+            this.getLastMessageAction({send_uid:this.getUserId,accept_uid:this.msgListStore.activeWindowId})
+//          }
+        }
+
+        if(this.msgListStore.activeTyep*1 == 2){
+            // 无记录 拉取最新记录
+            this.getGlastMessageAction({send_id:this.getUserId,group_id:this.msgListStore.activeWindowId})
+          this.getGroupNoticeAction({self_uid:this.getUserId,group_id:this.msgListStore.activeWindowId})
+        }
+        if(this.msgListStore.activeTyep*1 == 3){
+          this.getMergeNoticeAction({Page:this.systemPage,pageNum:10})
+        }
+
+
+      }
+
+
+    },
+    computed: {
+      ...mapGetters([
+        'selectedChat',
+        "getUserId",
+        'getChatList',
+        "getFindMeMsg",
+        "getFindMeState",
+        "isBoss",
+        "isManagement",
+      ]),
+      ...mapState([
+        'chatListStore',
+        'friendsListStore',
+        "msgListStore",
+        "wechatIMstore"
+      ]),
+
+    },
+    mounted() {
+      //  在页面加载时让信息滚动到最下面
+      try {
+        setTimeout(() => this.$refs.list.scrollTop = this.$refs.list.scrollHeight, 100)
+
+        this.$refs.list.addEventListener('scroll', this.handleScroll)
+
+        this.handleScroll()
+      }catch (e){
+
+      }
+
+    },
+    watch: {
+      'selectedChat.id'(n,o){
+        setTimeout(() => this.$refs.list.scrollTop = this.$refs.list.scrollHeight, 300)
+      },
+      'getChatList'(n,o){
+        if(n.length > 0){
+          let arr = [...n]
+          if((arr[arr.length - 1].status == "succeed" && !arr[arr.length - 1].userMsg) || (arr[arr.length - 1].status == "succeed" && arr[arr.length - 1].send_uid == this.getUserId)) {
+            this.setIsGoDown(true);
+          }else{
+            this.setIsGoDown(false);
+            setTimeout(() => this.$refs.list.scrollTop = this.$refs.list.scrollHeight, 0)
+          }
+        }
+
+      },
+
+
+    },
+    methods: {
+      ...mapMutations([
+        "setModalState",
+        "setChatRightBoxState",
+        'setChatRightFriendBoxState',
+        "windowMove",
+        "setIsGoDown",
+        "setChatRoomFindUser",
+        "setCloseFindMeModal",
+        "setRemarkName",
+        "clearMessageBack",
+        "setZhuanFaMessage"
+      ]),
+      ...mapActions([
+        "getLastMessageAction",
+        "getGlastMessageAction",
+        "getJudegMessageAction",
+        "getGjudgeMessageAction",
+        "getSofflineMessageAction",
+        "getGroupOfflineMessageAction",
+        "getGroupChatInfoAction",
+        "getFriendInfoAction",
+        "getMergeNoticeAction",
+        "addMergeNoticeAction",
+        "sendMessageIM",
+        "getGroupNoticeAction",
+        "isReadNoticeAction"
+      ]),
+      closeGonggao(){
+        this.setCloseFindMeModal()
+        this.isReadNoticeAction({self_uid:this.getUserId,group_id:this.msgListStore.activeWindowId})
+      },
+      //重发消息弹窗
+      reSendMessage(data){
+        this.chongFaDetail = data
+        // this.reSendMessageVisible = true
+        this.chongFaMessage();
+      },
+      //      重发消息
+      chongFaMessage(){
+        this.clearMessageBack({id:this.msgListStore.activeWindowId,type:this.msgListStore.activeTyep,unique_value:this.chongFaDetail.unique_value})
+        let data = {
+          to:this.chongFaDetail.asTo,
+          message:this.chongFaDetail.content,
+          type:this.chongFaDetail.type,
+        }
+        if(this.chongFaDetail.asGroup == 2){
+          let group = {}
+          group.groupName = this.friendsListStore.groupChatInfoList.data.group_name
+          group.count = this.friendsListStore.groupChatInfoList.data.count
+          data.groupinfo = group
+        }
+        setTimeout(()=>{
+          this.sendMessageIM(data)
+        },1000)
+      },
+      openConfig(data) {
+        this.configData.data = data
+        this.configData.visible = true;
+      },
+      closeConfig() {
+        this.configData.visible = false;
+      },
+      closeTranspond() {
+        this.transpondData.visible = false;
+      },
+      //转发图片，视频
+      getZhuanFa(data){
+        this.setZhuanFaMessage(data)
+        this.transpondData.visible = true;
+      },
+      //消息撤回
+      messageBack(msg){
+        // if((msg.send_uid && msg.send_uid == this.getUserId) || (msg.userMsg && msg.status == this.config.MSG_STATUS_SUCCEED) || (this.isBoss && this.msgListStore.activeTyep == 2) || (this.isManagement && this.msgListStore.activeTyep == 2)) {
+        //
+        // }
+          let data = {
+            to: this.msgListStore.activeWindowId,
+            message: msg.unique_value,
+            type: this.msgListStore.activeTyep == 1 ? _config.MSG_PRIVATE_RECALL : _config.MSG_PRIVATE_GROUPRECALL,
+          }
+          if (this.msgListStore.activeTyep == 2) {
+            let findGroup = {}
+            findGroup.groupName = this.friendsListStore.groupChatInfoList.data.group_name
+            findGroup.count = this.friendsListStore.groupChatInfoList.data.count
+            findGroup.findId = msg.send_uid || msg.groupmessage.sendid
+//                是群主传群组id
+            if (this.isBoss || this.isManagement) {
+              findGroup.findId = this.getUserId
+            }
+            findGroup.findId = findGroup.findId + ""
+            data.groupinfo = findGroup
+          }
+          this.sendMessageIM(data)
+          this.$message.success('撤回消息成功！')
+          this.clearMessageBack({
+            id: this.msgListStore.activeWindowId,
+            type: this.msgListStore.activeTyep,
+            unique_value: msg.unique_value,
+          })
+
+
+      },
+      otherAudioPaused(data) {
+        data.map(item=>{
+          if('isPlay' in item) {
+             if(item.isPlay) {
+               item.isPlay = false;
+             }
+          }
+        })
+        const audioDom = document.getElementsByClassName('audio_tag')
+        for(let i in audioDom) {
+          if(audioDom[i].paused != undefined) {
+            audioDom[i].setAttribute('data-flag','true')
+            if(!audioDom[i].paused) {
+              audioDom[i].pause();
+              audioDom[i].setAttribute('data-flag','false')
+            }
+          }
+        }
+
+      },
+//      @某人
+      getFindUser(data){
+        if(this.selectedChat.chatType == 2 && (this.friendsListStore.groupChatInfoList.data.is_forbidden == 1 || this.isBoss || this.isManagement)){
+          if((!data.userMsg && data.asGroup == 2) || (!data.asGroup && data.send_uid != this.getUserId && this.selectedChat.chatType == 2)){
+            let nickname = data.nickname
+            let findId = data.asFrom || data.send_uid
+            this.setChatRoomFindUser({nickname:nickname,uid:findId,status:true})
+          }
+        }
+
+      },
+
+      goBottom(){
+        setTimeout(() => this.$refs.list.scrollTop = this.$refs.list.scrollHeight, 0)
+//        setTimeout(() => this.$refs.list.scrollTo(0,5000), 200)
+      },
+      handleScroll(){
+        //scrollTop为滚动条在Y轴上的滚动距离。
+        //clientHeight为内容可视区域的高度。
+        //scrollHeight为内容可视区域的高度加上溢出（滚动）的距离。
+        var scrollTop = this.$refs.list.scrollTop
+        var scrollHeight = this.$refs.list.offsetHeight;
+        var scrollH = this.$refs.list.scrollHeight
+        this.isShowDown(scrollTop,scrollHeight,scrollH)
+
+      },
+      isShowDown(a,b,c){
+        let n = b - 100
+        if(c - (n+a) < 100){
+          this.setIsGoDown(false);
+        }else{
+          this.setIsGoDown(true);
+        }
+      },
+      getHistory(){
+        if(this.selectedChat.chatType == 1){
+          if(this.getChatList.length == 0) {
+//            无记录 拉取最新
+            this.getLastMessageAction({send_uid:this.getUserId,accept_uid:this.selectedChat.id})
+          }else {
+//            向上拉取单聊
+            let friendArr = this.msgListStore.friendMsgMap[this.selectedChat.id].msgList
+            let unique_value = friendArr[0].unique_value
+            var scrollTopList = this.$refs.list.scrollTop
+            this.getJudegMessageAction({send_uid:this.getUserId,accept_uid:this.selectedChat.id,uniqueId:unique_value,isUpDown:2}).then(()=>{
+              setTimeout(() => this.$refs.list.scrollTo(0,scrollTopList), 200)
+            })
+
+          }
+        }
+        if(this.selectedChat.chatType == 2){
+          if(this.getChatList.length == 0) {
+//            无记录 拉取最新
+            this.getGlastMessageAction({send_id:this.getUserId,group_id:this.selectedChat.id})
+          }else{
+            //            向上拉取群
+            let groupArr = this.msgListStore.roomMsgMap[this.selectedChat.id].msgList
+            let unique_value = groupArr[0].unique_value
+            var scrollTopList = this.$refs.list.scrollTop
+            this.getGjudgeMessageAction({send_id:this.getUserId,group_id:this.selectedChat.id,uniqueId:unique_value,isUpDown:2}).then(()=>{
+              setTimeout(() => this.$refs.list.scrollTo(0,scrollTopList), 200)
+            })
+
+          }
+        }
+        if(this.selectedChat.chatType == 3){
+
+          if(!this.wechatIMstore.mergeNoticeList.data || this.wechatIMstore.mergeNoticeList.data.length == 0) {
+            this.getMergeNoticeAction({Page:1,pageNum:10})
+          }else {
+            this.systemPage++
+            this.addMergeNoticeAction({Page:this.systemPage,pageNum:10})
+          }
+        }
+
+      },
+      getFriendInfo(){
+        this.getFriendInfoAction({self_uid:this.getUserId,friend_uid:this.msgListStore.activeWindowId}).then((res)=>{
+          this.setRemarkName({friend_uid:res.id,remarks_name:res.remarks_name,nickname:res.nickname })
+          this.setChatRightFriendBoxState(true)
+        })
+
+      }
+    },
+    filters: {
+      // 将日期过滤为 hour:minutes
+      time (date) {
+        if (typeof date === 'string') {
+          date = new Date(date);
+        }
+        if(date.getMinutes()<10){
+          return date.getHours() + ':0' +date.getMinutes();
+        }else{
+          return date.getHours() + ':' + date.getMinutes();
+        }
+      }
+    },
+  }
+</script>
+
+<style lang="less" scoped>
+  .not-message {
+    text-align: center;
+    margin-top: 60px;
+  }
+  .newMessage {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    right: 50px;
+    bottom: 190px;
+    color:#000;
+    cursor: pointer;
+    z-index:99;
+     img{
+      width: 100%;
+      height: 100%;
+    }
+  }
+</style>

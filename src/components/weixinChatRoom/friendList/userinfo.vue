@@ -1,0 +1,564 @@
+<!-- 好友信息 -->
+<template>
+  <div class="Info-wrapper">
+    <span v-if="friend_info && friend_info.is_admin == 1 && friendsListStore.isAddFriendState" class="el-icon-more info-more" @click="friendEditState = !friendEditState"></span>
+    <div class="newfriend" v-if="!friendsListStore.isAddFriendState"  @mousedown="windowMove($event)">
+      <div class="nickname">新的朋友</div>
+    </div>
+    <div class="friendInfo" v-if="friend_info && friendsListStore.isAddFriendState" @click="friendEditState = false">
+      <div class="esInfo" >
+        <div class="left">
+          <div class="people">
+            <div class="nickname">{{friend_info.nickname}}</div>
+            <div v-if="friend_info.sex==2" class="gender-female"></div>
+            <div v-else class="gender-male"></div>
+          </div>
+          <!--<div class="signature">{{friend_info.signature || '暂无个性签名'}}</div>-->
+        </div>
+        <div class="right">
+          <img
+            class="avatar"
+            width="60"
+            height="60"
+            :src="friend_info.head_portrait"
+            @click="setPicture({img: friend_info.head_portrait, state:true})"
+            v-if="friend_info.head_portrait"
+          >
+          <img class="avatar" width="60" height="60" v-else src="@/assets/weChat/default_avatar.png">
+        </div>
+      </div>
+
+      <div class="detInfo">
+        <div class="remark " @click="editRemark()" v-if="friend_info.is_admin == 1">
+          <span>备&nbsp&nbsp&nbsp注</span>
+          <div class="remarkedit point" >
+            <a class="blackColor point"  v-if="nameRemark == 0" >{{friend_info.remarks_name || '点击添加备注'}}</a>
+            <input
+            v-if="nameRemark == 1"
+            type="text"
+            placeholder=""
+            v-model="friend_info.remarks_name"
+            maxlength="12"
+            @blur="loseFocus">
+          </div>
+        </div>
+        <!--<div class="area wxid blackColor"><span>地&nbsp&nbsp&nbsp区</span>{{friend_info.region}}</div>-->
+        <div class="wxid blackColor"><span>账&nbsp&nbsp&nbsp号</span>{{friend_info.username}}</div>
+        <!-- <div class="wxid blackColor"><span>电话号</span>{{friend_info.phone}}</div> -->
+      </div>
+
+      <div class="send" @click="sendMessage(friend_info)">
+        <span>发消息</span>
+      </div>
+    </div>
+
+    <div class="new-friend-add"  v-else>
+      <div class="new-friend-item flex-between"
+      v-for="(item,index) in friendsListStore.dataAddFriendList.data"
+      v-if="friendsListStore.dataAddFriendList.data.length > 0">
+        <div class="new-friend-item-info flex">
+          <img v-if="item.head_portrait" :src="item.head_portrait" alt="">
+          <img v-else width="60" height="60" src="@/assets/weChat/default_avatar.png">
+          <div class="new-friend-item-name">
+            <span>{{item.nickname}}</span>
+            <p>{{item.add_msg}}</p>
+          </div>
+        </div>
+        <div class="new-friend-isjieshou">
+          <span class="accepet" @click="accepetFriend(item)">接受</span>
+          <span class="refuse" @click="refuseFriend(item)">拒绝</span>
+        </div>
+      </div>
+      <div v-if="friendsListStore.dataAddFriendList.code == 10002" class="noneData">暂无好友请求</div>
+      <p class="last-time-p">最近申请  <span v-if="friendsListStore.newAddFriendHistory.length > 0" @click="clearNewFriendFn">清空记录</span></p>
+      <div class="new-friend-item flex-between"
+           v-for="(item,index) in friendsListStore.newAddFriendHistory"
+           v-if="friendsListStore.newAddFriendHistory.length > 0">
+        <div class="new-friend-item-info flex">
+          <img v-if="item.head_portrait" :src="item.head_portrait" alt="">
+          <img v-else width="60" height="60" src="@/assets/weChat/default_avatar.png">
+          <div class="new-friend-item-name">
+            <span>{{item.nickname}}</span>
+            <p>{{item.message}}</p>
+          </div>
+        </div>
+        <div class="new-friend-isjieshou">
+          <div>
+            <p :class="item.agree == 1 ? 'green' :'red'">({{item.agree == 1 ? '已添加' : '已拒绝'}})</p>
+            {{getTimes(item.create_time)}}
+          </div>
+          <span class="gray" @click="openInfo(item)">查看</span>
+        </div>
+      </div>
+    </div>
+
+    <transition name="showbox">
+      <div class="userinfo-more-option" v-if="friendEditState">
+        <div @click="blackList">
+          <span>删除并拉黑</span>
+        </div>
+        <!--<div @click="deleteFriend">-->
+           <!--<span>删除好友</span>-->
+        <!--</div>-->
+      </div>
+    </transition>
+  </div>
+</template>
+
+<script>
+  import { mapGetters ,mapActions , mapState ,mapMutations} from 'vuex'
+  import _config from '../../../configWX/configWX'
+  import {getTimes} from '@/common/common'
+  export default {
+
+    data () {
+      return {
+        friendEditState: false,
+        nameRemark:0,
+        getTimes:getTimes,
+        // remarks_name:''
+      }
+    },
+    computed: {
+      ...mapGetters([
+        'getUserId',
+      ]),
+      ...mapState([
+        'friendsListStore',
+        'chatListStore',
+        'chatuserInfoStore',
+        "msgListStore"
+      ]),
+      friend_info () {
+        return this.friendsListStore.friendInfo
+      }
+    },
+    watch: {
+      friend_info (newVal) {
+        if (newVal) {
+          this.friendEditState = false
+        }
+      }
+    },
+    created() {
+      this.addFriendList({self_uid: this.getUserId})
+      this.friendsListStore.friendInfo = ''
+
+      if(this.friendsListStore.newAddFriendHistory.length > 0){
+        let string = []
+        for (let i of this.friendsListStore.newAddFriendHistory) {
+          string.push(i.id)
+        }
+        this.getAllListFriendList({self_uid: this.getUserId,friend_uid:string.join(",")})
+      }
+
+    },
+    methods: {
+      ...mapActions([
+        'searchUser',
+        "addFriendList",
+        "refuseAddFriend",
+        "addMyFriendAction",
+        "getFriendList",
+        "deleteFriendInfo",
+        "blackFriendInfo",
+        "editFriendInfo",
+        "sendMessageIM",
+        "getFriendInfoAction",
+        "getAllListFriendList",
+        "addMsgAction"
+      ]),
+      ...mapMutations([
+        "setFriendEditState",
+        "setPicture",
+        "windowMove",
+        'setActiveWindow',
+        "deleteChatWindow",
+        "deleteMessageMap",
+        "setNewAddFriendHistory",
+        "setModalState",
+        "setIsAddFriendState",
+        "sendNewChat",
+        "createFriendChatMessage"
+
+      ]),
+      clearNewFriendFn(){
+        this.setNewAddFriendHistory({clear:true})
+      },
+      checkLength(v){
+        let t =v.replace(/[\u4e00-\u9fa5]/g,'');//替换中文
+        return (v.length-t.length)*2+t.length<=24;//判断长度
+      },
+      sendMessage (i) {
+        // console.log('i',i)
+        this.createFriendChatMessage({id:i.id})
+        let fromMessage = {
+          id:JSON.stringify(i.id),
+          name:i.nickname || '',
+          count:0,
+          head_portrait:i.head_portrait || '',
+          remarks_name:i.remarks_name || '',
+        }
+        this.sendNewChat({message:fromMessage,type:1,state:true})
+
+      },
+//      查看好友详情
+      openInfo(item){
+        this.setIsAddFriendState(false)
+        this.getFriendInfoAction({self_uid:this.getUserId,friend_uid:item.id}).then((res)=>{
+          this.setModalState('userInfoState')
+        })
+      },
+      // 接受好友申请
+      accepetFriend(item){
+        let data = {
+          self_uid:this.getUserId,
+          friend_uid:item.id,
+          agree:1,
+          add_msg:'',
+          head_portrait:item.head_portrait,
+          nickname:item.nickname
+        }
+        this.addMyFriendAction(data).then(res=>{
+          item.agree = 1
+          this.setNewAddFriendHistory(item)
+          this.addFriendList({self_uid:this.getUserId})
+
+          // this.createFriendChatMessage({id:item.id})
+          //
+          // let fromMessage = {
+          //   id:item.id,
+          //   name:item.nickname,
+          //   count:0,
+          //   head_portrait:item.head_portrait,
+          //   remarks_name:'',
+          // }
+          // this.sendNewChat({message:fromMessage,type:1,state:true})
+
+
+
+
+        })
+
+      },
+      // 拒绝好友申请
+      refuseFriend(item){
+        this.refuseAddFriend({
+          self_uid:this.getUserId,
+          friend_uid:item.id,
+          agree:2
+        }).then(res=>{
+          item.agree = 2
+          this.setNewAddFriendHistory(item)
+          this.addFriendList({self_uid:this.getUserId})
+        })
+      },
+       editRemark(){
+         this.nameRemark = 1
+       },
+       loseFocus(){
+         this.nameRemark = 0
+         let data = {
+           self_uid:this.getUserId,
+           friend_uid:this.friendsListStore.friendInfo.id,
+           remarks_name:this.friend_info.remarks_name,
+           friend_phone:this.friend_info.phone
+         }
+         this.editFriendInfo(data).then(res=>{
+           this.getFriendList({self_uid:this.getUserId})
+         })
+       },
+      // 删除好友
+      deleteFriend(){
+        this.friendEditState = false
+        this.$confirm(`是否删除${this.friend_info.nickname}`, '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          var deletedata = {
+            self_uid:this.getUserId,
+            friend_uid:this.friend_info.id
+          }
+          this.deleteFriendInfo(deletedata).then(res=>{
+            this.addFriendList({self_uid: this.getUserId})//获取左边的好友列表
+            this.getFriendList({self_uid:this.getUserId})
+//            this.deleteChatWindow({id:deletedata.friend_uid,chatType:1})
+//            this.deleteMessageMap({id: deletedata.friend_uid,chatType:1})
+            this.friendsListStore.friendInfo = ''
+          })
+        }).catch(()=>{})
+      },
+      // 拉入黑名单
+      blackList(){
+        this.friendEditState = false
+        this.$confirm(`是否拉黑${this.friend_info.nickname}`, '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          let data = {
+            self_uid:this.getUserId,
+            friend_uid:this.friend_info.id
+          }
+          this.blackFriendInfo(data).then(res=>{
+            this.getFriendList({self_uid:this.getUserId})
+            this.friendsListStore.friendInfo = ''
+          })
+        }).catch(()=>{})
+      }
+
+    }
+  }
+</script>
+
+<style lang="less" scoped>
+  .new-friend-add {
+    height: 590px;
+    overflow: auto;
+    padding-top: 15px;
+    padding-bottom: 15px;
+    .last-time-p {
+      margin: 5px auto;
+      padding-left: 30px;
+      line-height: 30px;
+      background-color: #DFDDDB;
+      color:#666;
+      font-size: 14px;
+      span {
+        float: right;
+        color: #ff0000;
+        margin-right: 10px;
+        cursor: pointer;
+      }
+    }
+    .new-friend-item {
+      width: 450px;
+       margin: 0 auto;
+      padding: 10px 0;
+      border-bottom: 1px solid #e7e7e7;
+      .new-friend-item-info {
+
+        img {
+          width: 50px;
+          height: 50px;
+        }
+        .new-friend-item-name {
+          margin-left: 10px;
+          span {
+            font-size: 15px;
+          }
+          p{
+            color:#999;
+          }
+        }
+      }
+      .new-friend-isjieshou {
+        color:#fff;
+        cursor: pointer;
+        display: flex;
+        > div {
+          color:#666;
+          margin-right: 10px;
+          .red {
+            color:red;
+          }
+          .green {
+            color:green;
+          }
+        }
+        span{
+          line-height: 26px;
+          text-align: center;
+          border-radius: 3px;
+          width: 60px;
+          height: 26px;
+          display: block;
+          margin: auto;
+        }
+        .gray {
+          background-color: #ddd;
+          color:#1aad19;
+        }
+        .accepet{
+          background-color: #1aad19;
+        }
+        .refuse{
+          background-color: #ddd;
+          color:#666;
+          margin-left: 10px;
+        }
+      }
+    }
+  }
+  .userinfo-more-option {
+      position: absolute;
+      top:40px;
+      right: 30px;
+      width: 90px;
+
+      background-color: #2C2B2B;
+      z-index: 10;
+      border-radius: 5px;
+      font-size:15px;
+    /*overflow:hidden;*/
+    &:before{
+      content: " ";
+       position: absolute;
+       bottom: 100%;
+       right: 10px;
+       border: 6px solid transparent;
+       border-bottom-color: #333;
+     }
+    >div {
+      color: #8C8C8C;
+      cursor: pointer;
+       line-height: 45px;
+        text-align: center;
+       border-top-left-radius: 5px ;
+       border-top-right-radius: 5px ;
+      overflow: hidden;
+    &:nth-child(2) {
+       border-bottom-left-radius: 5px ;
+       border-bottom-right-radius: 5px ;
+     }
+    img {
+      width: 24px;
+      height: 24px;
+      margin: 0 8px;
+    }
+    &:hover {
+       color:#fff;
+     }
+    }
+    &.showbox-enter-active, &.showbox-leave-active {
+                               transition: all .5s;
+                             }
+    &.showbox-enter,&.showbox-leave-active {
+                       opacity: 0;
+                     }
+
+  }
+  .Info-wrapper {
+    position: relative;
+    .info-more {
+      position: absolute;
+      right: 30px;
+      top:10px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+  }
+  .newfriend {
+    height: 60px;
+    padding: 28px 0 0 30px;
+    box-sizing: border-box;
+    border-bottom: 1px solid #e7e7e7;
+    .nickname {
+      font-size: 18px;
+    }
+  }
+  .friendInfo {
+    padding: 0 90px;
+    .esInfo {
+      display: flex;
+      align-items: center;
+      padding: 100px 0 45px 0;
+      .left {
+        flex: 1;
+        .people {
+          display: flex;
+          align-items: center;
+          margin-bottom: 16px;
+          .nickname{
+            display: inline-block;
+            font-size: 20px;
+            margin-right: 10px;
+          }
+          .gender-male,.gender-female {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            vertical-align: middle;
+          }
+          .gender-male {
+            background-image: url('../../../assets/weChat/man.png');
+            background-size: cover;
+          }
+          .gender-female {
+            background-image: url('../../../assets/weChat/woman.png');
+            background-size: cover;
+          }
+
+        }
+        .signature {
+          font-size: 14px;
+          color: rgba(153,153,153,.8);
+        }
+      }
+      .right {
+        .avatar {
+          border-radius: 3px;
+          cursor: pointer;
+        }
+      }
+    }
+    .detInfo {
+      padding: 40px 0;
+      border-top: 1px solid #e7e7e7;
+      border-bottom: 1px solid #e7e7e7;
+      .remark,.wxid{
+        margin-top: 20px;
+      }
+      .remark,.area,.wxid {
+        font-size: 14px;
+        span {
+          font-size: 14px;
+          color: rgba(153,153,153,.8);
+          margin-right: 40px;
+        }
+      }
+      .remark {
+        margin-top: 0;
+        display: flex;
+        .remarkedit{
+          a:hover{
+            border: 1px solid #B8C4D1;
+            background-color: #ECEEF0;
+            border-radius: 4px;
+            padding: 2px;
+          }
+          input{
+            border-bottom: 1px solid #000000;
+            background-color: #F5F5F5;
+          }
+        }
+      }
+
+    }
+    .send {
+      position: relative;
+      text-align: center;
+      width: 140px;
+      height: 36px;
+      left: 115px;
+      top: 50px;
+      line-height: 36px;
+      font-size: 14px;
+      color: #fff;
+      background-color: #1aad19;
+      cursor: pointer;
+      border-radius: 2px;
+      &:hover {
+         background: rgb(18,150,17);
+       }
+    }
+
+  }
+  .noneData{
+    text-align: center;
+    font-size: 14px;
+    line-height: 100px;
+  }
+</style>
+

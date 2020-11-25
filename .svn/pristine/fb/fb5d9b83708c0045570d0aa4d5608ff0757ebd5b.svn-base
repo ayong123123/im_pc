@@ -1,0 +1,178 @@
+<template>
+  <div class="wechat-home" @click="closeSomeModal()">
+    <div class="chat-content"  id="privateWindow">
+      <div class="sidebar">
+        <wx-leftNav ref="leftNav"></wx-leftNav>
+      </div>
+      <div class="chat-right">
+        <router-view/>
+      </div>
+    </div>
+    <div class="bg-modal" v-if="chatListStore.pictureObj.state || chatListStore.sendRedPackState
+    || chatListStore.AddContactState || chatListStore.AddFriendState || chatListStore.userInfoState || chatListStore.groupUserInfoState || chatListStore.testDemo || wechatIMstore.onlineState == 2 || chatListStore.redPupContainer || chatListStore.sendBullRedState || chatListStore.sendSweepRedState || chatListStore.redDetailState || chatListStore.sendDragonRedState || chatListStore.groupIncomeState || chatListStore.groupManageState || chatListStore.groupZhuShou || chatListStore.moneyRewardState || chatListStore.orderFollowState || chatListStore.groupErWeiMaState || chatListStore.planFollowState " @click="closePhoto">
+    </div>
+    <!--二维码-->
+    <groupQrcode v-if="chatListStore.groupErWeiMaState"></groupQrcode>
+    <!--打赏-->
+    <moneyReward v-if="chatListStore.moneyRewardState"></moneyReward>
+    <!--订单跟投-->
+    <orderFollow v-if="chatListStore.orderFollowState"></orderFollow>
+    <!--计划跟投-->
+    <planFollow v-if="chatListStore.planFollowState"></planFollow>
+    <!--看视频-->
+    <wx-video v-if="chatListStore.videoObj.state"></wx-video>
+    <!--看图片-->
+    <wx-photo v-if="chatListStore.pictureObj.state"></wx-photo>
+    <!--发红包-->
+    <wx-send-redpack v-if="chatListStore.sendRedPackState"></wx-send-redpack>
+    <!--发牛牛红包-->
+    <wx-send-bullpack v-if="chatListStore.sendBullRedState"></wx-send-bullpack>
+    <!--发扫雷红包-->
+    <wx-send-sweeppack v-if="chatListStore.sendSweepRedState"></wx-send-sweeppack>
+    <!--发接龙红包-->
+    <wx-send-dragonpack v-if="chatListStore.sendDragonRedState"></wx-send-dragonpack>
+    <!--群收益-->
+    <groupIncome v-if="chatListStore.groupIncomeState"></groupIncome>
+    <!--管理员设置-->
+    <groupManageSet v-if="chatListStore.groupManageState"></groupManageSet>
+    <!--群助手-->
+    <groupAssistant v-if="chatListStore.groupZhuShou"></groupAssistant>
+    <!--新建群聊-->
+    <wx-newBuildGroup v-if="chatListStore.AddContactState"></wx-newBuildGroup>
+    <!--添加新朋友-->
+    <wx-addNewFriend v-if="chatListStore.AddFriendState"></wx-addNewFriend>
+    <!-- 用户信息 -->
+    <wx-userDetail v-if="chatListStore.userInfoState"></wx-userDetail>
+    <!-- 红包详情-->
+    <wx-red-detail v-if="chatListStore.redDetailState"></wx-red-detail>
+    <!-- 红包打开 -->
+    <wx-red-open v-if="chatListStore.redPupContainer"></wx-red-open>
+    <!--转账打开-->
+    <wx-transfer-detail v-if="chatListStore.transferDetail"></wx-transfer-detail>
+    <!-- 群员信息 -->
+    <wx-groupUserDetail v-if="chatListStore.groupUserInfoState"></wx-groupUserDetail>
+    <!-- 修改密码弹窗-->
+    <wx-setPayPassword v-if="chatListStore.setPassword"/>
+    <wx-again-connect  v-if="wechatIMstore.onlineState == 2"></wx-again-connect>z
+    <div  v-if="msgListStore.didiMp3State">
+      <audio :autoplay="msgListStore.didiMp3State" :loop="false" ><source src="../assets/weChat/mp3/dididi.mp3" type="audio/mp3" /></audio>
+    </div>
+    <div v-if="msgListStore.redPackMp3State">
+      <audio :autoplay="msgListStore.redPackMp3State"  :loop="false"  ><source src="../assets/weChat/mp3/redPack.mp3" type="audio/mp3" /></audio>
+    </div>
+    <div v-if="msgListStore.questSoundMp3State">
+      <audio :autoplay="msgListStore.questSoundMp3State"  :loop="false"  ><source src="../assets/weChat/mp3/getUserQuest.wav" type="audio/wav" /></audio>
+    </div>
+    <div class="sound-setting">
+      <ul>
+        <li :class="{line:!chatListStore.messageSoundOpen}" @click="setModalState('messageSoundOpen')">
+          <img src="../assets/weChat/sound_icon.png" alt="" v-if="chatListStore.messageSoundOpen">
+          <img src="../assets/weChat/not_sound_icon.png" alt="" v-else> 消息提醒
+        </li>
+        <li :class="{line:!chatListStore.redPackSoundOpen}"  @click="setModalState('redPackSoundOpen')">
+          <img src="../assets/weChat/red_envelopes_icon.png" alt="" v-if="chatListStore.redPackSoundOpen">
+          <img src="../assets/weChat/not_sound-redpack.png" alt="" v-else> 红包提醒
+        </li>
+      </ul>
+    </div>
+  </div>
+</template>
+
+<script>
+
+//  import '../common/pc2.css';
+import {mapState, mapMutations, mapActions,mapGetters} from 'vuex';
+import {getDate,setDate,copyobj,setSession,getSession,getchar,randomRange} from '../common/common'
+import {MessageBox,Message} from 'element-ui';
+
+export default {
+  name: 'home',
+  data () {
+    return {
+      auto:true,
+
+
+    }
+  },
+  provide () {
+    return {
+
+    }
+  },
+  mounted () {
+  },
+  created (){
+  },
+  watch:{
+  },
+  methods: {
+
+    ...mapMutations([
+      "setPicture",
+      "setModalState",
+      "closeSomeModal",
+    ]),
+    ...mapActions([
+      "initData",
+      "getFriendList"
+    ]),
+    closePhoto(){
+      this.setPicture({img:'',state:false})
+    },
+  },
+  components:{
+
+  },
+  computed: {
+
+    ...mapState([
+      "chatListStore",
+      "wechatIMstore",
+      "msgListStore",
+      "friendsListStore"
+    ]),
+
+    ...mapGetters([
+      "getUserId"
+    ])
+
+  },
+  filters:{
+
+  }
+}
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style lang="less" scoped>
+  .bg-modal {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,.7);
+    z-index: 110;
+  }
+  .sound-setting {
+    position: fixed;
+    font-size: 14px;
+
+    top: 10px;
+    right: 10px;
+    width: 100px;
+    height: 60px;
+    li {
+      line-height: 30px;
+      color:red;
+      img{
+        width: 24px;
+        margin-right: 4px;
+      }
+      &.line {
+         color:#333;
+         text-decoration:line-through;
+       }
+    }
+  }
+</style>

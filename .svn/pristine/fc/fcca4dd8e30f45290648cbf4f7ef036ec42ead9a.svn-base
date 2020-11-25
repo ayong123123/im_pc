@@ -1,0 +1,1093 @@
+<template>
+  <div class="content">
+    <div class="msglist">
+      <wx-search></wx-search>
+      <wx-userChatList></wx-userChatList>
+    </div>
+    <div class="chatbox"  >
+      <wx-chatMessage  ref="chatMessage"></wx-chatMessage>
+      <wx-send-text v-if="chatListStore.chatlist.length > 0 && msgListStore.activeTyep != 3" @goBottom="goBottom"></wx-send-text>
+    </div>
+
+    <!-- 群聊侧边 -->
+    <transition name="showbsox" v-if="chatListStore.ChatRightBoxState">
+      <div class="look-right-Box">
+        <div class="right-all-user">
+          <div class="all-user-count-msg">
+            <div class="flex-between"  v-if="deleteUsers">
+              <span class="cancel-select" @click="deleteUsers = false">取消</span>
+              <span class="delete-select" @click="deleteQunUserFn">删除</span>
+            </div>
+            <input type="text" placeholder="搜索群员" v-model="friendsListStore.groupUserSearch"  v-if="deleteUsers"/>
+            <p v-if="!deleteUsers">群聊信息({{friendsListStore.groupChatInfoList.data.count}})</p>
+
+          </div>
+          <ul>
+            <li v-for="i in getGroupUsers" @click="openUserInfo(i)" v-if="!deleteUsers || (deleteUsers && isBoss && (i.role == 2 || i.role == 3)) || (deleteUsers && isManagement && i.role == 3)">
+              <el-checkbox v-model="i.checked" class="check-user-det" v-show="deleteUsers"></el-checkbox>
+              <div>
+                <img :src="i.head_portrait || moren" alt="" :class="{doudou:deleteUsers}">
+              </div>
+              <p class="long-text" :style="i.role == 1 || i.role == 2 ? {'color':'#CD7F32'} :'#666'">{{i.user_group_name}}</p>
+              <img src="@/assets/weChat/qunzhu_icon.png" alt=""  v-show="i.role == 1" class="qunz-icon2"/>
+              <img src="@/assets/weChat/guanliyuan_icon.png" alt=""  v-show="i.role == 2" class="qunz-icon2"/>
+            </li>
+            <li v-if="isManagement || isBoss"  v-show="!deleteUsers" @click="deleteQunYuan()" class="cancel-add">
+              <div>
+                <!--<img src="@/assets/weChat/delete_icon.png" style="width: 35px;height: 35px;" alt="">-->
+                -
+              </div>
+            </li>
+            <li @click="openQunliaoAdd" v-show="!deleteUsers" class="cancel-add">
+              <div>+
+              </div>
+              <!--<p>添加</p>-->
+            </li>
+          </ul>
+        </div>
+        <div class="qunliao-message">
+          <div class="ql-user-edit flex-between" @click="editQlname()">
+            <span>群聊名称</span>
+
+            <input type="text" style="width: 135px;" v-if="setQlName" maxlength="16" v-model="friendsListStore.groupChatInfoList.data.group_name"  @blur="qlnameBlur()" placeholder="请输入群聊名称">
+            <div style="width: 135px;" v-else>
+              {{friendsListStore.groupChatInfoList.data.group_name}}
+            </div>
+          </div>
+          <div class="ql-user-edit flex-between" >
+            <span>群封面</span>
+            <img :src="friendsListStore.groupChatInfoList.data.group_cover" alt="群封面" width="40" height="40" />
+            <input v-if="isBoss || isManagement" type="file" accept="image/*" name="file" @change="pictureGroup($event)" class="hideFile"/>
+          </div>
+          <div class="ql-user-edit flex-between" @click="setModalState('groupErWeiMaState')">
+            <span>群二维码</span>
+            <img src="@/assets/weChat/right_icon.png" alt="" width="20" />
+          </div>
+          <div class="ql-user-edit" @click="openQunGonggao()">
+            <span>群公告</span>
+            <div style="width: auto;" class="gg_div">
+              {{friendsListStore.groupChatInfoList.data.describe || '群主还未发布公告'}}
+            </div>
+          </div>
+          <div class="ql-user-edit flex-between" v-if="isBoss" @click="setModalState('groupIncomeState')">
+            <span>群收益</span>
+            <img src="@/assets/weChat/right_icon.png" alt="" width="20" />
+          </div>
+          <div class="ql-user-edit flex-between" v-if="isBoss" @click="setModalState('groupManageState')">
+            <span>设置管理员</span>
+            <span>
+              {{managementCount >  0  ?  '共' +managementCount +'人' : '暂无'}}<img src="@/assets/weChat/right_icon.png" alt="" width="20" />
+            </span>
+          </div>
+          <!-- 此功能去除 -->
+          <!--<div class="ql-user-edit flex-between" @click="editQlNickname()">-->
+            <!--<span>我在本群昵称</span>-->
+            <!--<input type="text" v-if="setQlNickname" v-model="friendsListStore.groupChatInfoList.data.user_name" @blur="qlNicknameBlur()" placeholder="请输入本群昵称名称">-->
+            <!--<div v-else>-->
+              <!--{{friendsListStore.groupChatInfoList.data.user_name}}-->
+            <!--</div>-->
+          <!--</div>-->
+          <div class="ql-user-edit flex-between"  v-if="isManagement || isBoss">
+            <span>允许群成员加好友</span>
+            <el-switch style="width: auto"
+              v-model="friendsListStore.isAddFriend"
+              active-color="#13ce66"
+              inactive-color="#ddd"
+              @change="setAddFriendFn"
+            >
+            </el-switch>
+          </div>
+          <div class="ql-user-edit flex-between"  v-if="isManagement || isBoss">
+            <span>群组禁言</span>
+            <el-switch style="width: auto"
+                       v-model="friendsListStore.disableSpeack"
+                       active-color="#13ce66"
+                       inactive-color="#ddd"
+                       @change="setDisableSpeackFn">
+            </el-switch>
+          </div>
+          <div class="ql-user-edit flex-between"  v-if="isManagement || isBoss">
+            <span>允许成员拉人进群</span>
+            <el-switch style="width: auto"
+                       v-model="friendsListStore.isGetPeople"
+                       active-color="#13ce66"
+                       inactive-color="#ddd"
+                       @change="setIsGetPeopleFn">
+            </el-switch>
+          </div>
+          <div class="ql-user-edit flex-between"  v-if="isBoss">
+            <span>扫码进群需群主确认</span>
+            <el-switch style="width: auto"
+                       v-model="friendsListStore.saoMaGroupJoin"
+                       active-color="#13ce66"
+                       inactive-color="#ddd"
+                       @change="saoMaGroupJoinFn">
+            </el-switch>
+          </div>
+          <div class="ql-user-edit flex-between" @click="clearHistoryFn">
+            <span>清空聊天记录</span>
+          </div>
+
+        </div>
+
+        <div class="clear-message-btn" @click="shanchuQunFn()"  v-if="isBoss">
+          解散群聊
+        </div>
+        <div class="clear-message-btn" @click="delQlOutFn()" v-else>
+          退出群聊
+        </div>
+      </div>
+    </transition>
+
+    <transition name="showbsox" v-if="chatListStore.ChatRightFriendBoxState">
+      <div class="look-right-Box" >
+        <div class="right-all-user">
+          <div class="all-user-count-msg">
+            <p>好友信息</p>
+          </div>
+        </div>
+        <div class="friend-message">
+          <div class="look-new-friend-detail flex">
+            <img v-lazy="friendsListStore.friendInfo.head_portrait || moren" alt="">
+            <div class="look-new-friend-user">
+              <div class="look-new-friend-name">
+                {{friendsListStore.friendInfo.remarks_name || friendsListStore.friendInfo.nickname}}
+                <img src="@/assets/weChat/woman.png" width="12" alt="" v-if="friendsListStore.friendInfo.sex == 2">
+                <img src="@/assets/weChat/man.png" width="12"  alt="" v-else>
+              </div>
+              <div class="look-new-friend-diqu">昵&nbsp;&nbsp;称 : {{friendsListStore.friendInfo.nickname}}</div>
+              <div class="look-new-friend-diqu">账号: {{friendsListStore.friendInfo.username}} </div>
+              <!--<div class="look-new-friend-diqu">地&nbsp;&nbsp;&nbsp;区: {{friendsListStore.friendInfo.region || '&#45;&#45;'}}</div>-->
+            </div>
+          </div>
+          <div class="friend-other-message">
+
+            <!--<div class="other-message-item flex">-->
+              <!--<span class="flex-shrink0">手机号</span>-->
+              <!--<div class="color-phone">-->
+                <!--{{friendsListStore.friendInfo.phone}}-->
+              <!--</div>-->
+            <!--</div> -->
+            <!--<div class="other-message-item flex">-->
+              <!--<span class="flex-shrink0">个性签名</span>-->
+              <!--<div>-->
+                <!--{{friendsListStore.friendInfo.signature || '&#45;&#45;'}}-->
+              <!--</div>-->
+            <!--</div>-->
+            <div class="other-message-item flex"  v-if="friendsListStore.friendInfo.is_admin ==1 && friendsListStore.friendInfo.is_friend != 0">
+              <span class="flex-shrink0" @click="editRemarkname = true">设置备注</span>
+              <div class="remark-edit">
+                <a v-if="!editRemarkname" @click="editRemarkname = true">{{friendsListStore.friendInfo.remarks_name}}</a>
+                <input type="text" v-model="friendsListStore.friendInfo.remarks_name" @blur="markNameFocus" v-else>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="qunliao-message" @click="clearHistoryFn">
+          <div class="ql-user-edit flex-between">
+            <span>清空聊天记录</span>
+          </div>
+        </div>
+        <div class="clear-message-btn add" @click="addMyFriend" v-if="friendsListStore.friendInfo.is_friend != 1 && friendsListStore.friendInfo.is_admin == 1">
+          添加好友
+        </div>
+        <div class="clear-message-btn" @click="deleteFriend" v-if="friendsListStore.friendInfo.is_admin == 1">
+          删除并拉黑
+        </div>
+      </div>
+    </transition>
+    <el-dialog
+      title="群公告"
+      :visible.sync="editGongGaoVisible"
+      width="40%">
+      <textarea class="qun-Modal" v-model="friendsListStore.groupChatInfoList.data.describe" cols="30" rows="10" placeholder="发布群公告">
+
+      </textarea>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="editGongGaoVisible = false">取 消</el-button>
+        <el-button type="primary" @click="sureQunGgSet">确 定</el-button>
+      </span>
+    </el-dialog>
+  </div>
+</template>
+
+<script>
+  import {mapState, mapMutations, mapActions ,mapGetters} from 'vuex';
+  import {copyobj,setSession,getSession,getchar} from '@/common/common'
+  import moren from '../../../assets/weChat/default_avatar.png'
+  import {Message} from 'element-ui'
+
+  export default {
+    name: 'home',
+    data () {
+      return {
+        setQlName:false,
+        setQlNickname:false,
+        moren:moren,
+        editGongGaoVisible:false,
+        deleteUsers:false,
+        editRemarkname:false,
+      }
+    },
+    mounted(){
+
+    },
+    created (){
+      this.setChatRightBoxState(false)
+      this.setChatRightFriendBoxState(false)
+      if(this.chatListStore.chatlist.length > 0){
+        if(this.msgListStore.activeTyep*1 == 2){
+          this.getGroupChatInfoAction({self_uid:this.getUserId,group_id:this.msgListStore.activeWindowId})
+        }
+      }
+      if(this.msgListStore.isFirstLogin){
+        try{
+          var _this = this
+          var allArr = []
+          if(this.chatListStore.chatlist.length > 0){
+            let uniArr = this.chatListStore.chatlist.filter(function (i) {
+              return i.chatType == 2
+            })
+            if(uniArr.length > 0) {
+              uniArr.forEach(function (a) {
+                let msgList = _this.msgListStore.roomMsgMap[a.id].msgList
+                if(msgList.length > 0){
+                  let list = [...msgList]
+                  let myList = list.reverse()
+                  let lastOBj =  myList.find(b=> (b.send_uid && b.send_uid != _this.getUserId) || (b.asGroup &&  b.asFrom != _this.getUserId))
+                  console.log(lastOBj)
+                  if(lastOBj){
+                    let group_id = lastOBj.group_id ? lastOBj.group_id : lastOBj.asTo
+                    let unicode = lastOBj.unique_value + '_' + _this.getUserId + '_' + group_id
+
+                    allArr.push(unicode)
+                  }
+
+                }
+//          console.log(allArr)
+              })
+
+            }
+
+
+          }
+          // 获取群聊离线
+          if(allArr.length > 0) {
+            this.getGroupOfflineMessageAction({uid:this.getUserId,offlineKey:allArr.join(",")})
+          }else{
+            this.getGroupOfflineMessageAction({uid:this.getUserId,offlineKey:''})
+          }
+        }catch (e){
+
+        }
+        //      获取单聊离线
+        this.getSofflineMessageAction({uid:this.getUserId,offlineKey:''})
+        this.setIsFirstLogin(false)
+      }
+
+
+
+    },
+    watch:{
+      'deleteUsers'(){
+        this.setGroupUserSearch()
+      },
+      'wechatIMstore.onlineState'(){
+        this.setChatRightBoxState(false)
+        this.setChatRightFriendBoxState(false)
+        if(this.chatListStore.chatlist.length > 0){
+          if(this.msgListStore.activeTyep*1 == 2){
+            this.getGroupChatInfoAction({self_uid:this.getUserId,group_id:this.msgListStore.activeWindowId})
+          }
+        }
+        if(this.msgListStore.isFirstLogin){
+          try{
+            var _this = this
+            var allArr = []
+            if(this.chatListStore.chatlist.length > 0){
+              let uniArr = this.chatListStore.chatlist.filter(function (i) {
+                return i.chatType == 2
+              })
+              if(uniArr.length > 0) {
+                uniArr.forEach(function (a) {
+                  let msgList = _this.msgListStore.roomMsgMap[a.id].msgList
+                  if(msgList.length > 0){
+                    let list = [...msgList]
+                    let myList = list.reverse()
+                    let lastOBj =  myList.find(b=> (b.send_uid && b.send_uid != _this.getUserId) || (b.asGroup &&  b.asFrom != _this.getUserId))
+                    console.log(lastOBj)
+                    if(lastOBj){
+                      let group_id = lastOBj.group_id ? lastOBj.group_id : lastOBj.asTo
+                      let unicode = lastOBj.unique_value + '_' + _this.getUserId + '_' + group_id
+
+                      allArr.push(unicode)
+                    }
+
+                  }
+//          console.log(allArr)
+                })
+
+              }
+
+
+            }
+            // 获取群聊离线
+            if(allArr.length > 0) {
+              this.getGroupOfflineMessageAction({uid:this.getUserId,offlineKey:allArr.join(",")})
+            }else{
+              this.getGroupOfflineMessageAction({uid:this.getUserId,offlineKey:''})
+            }
+          }catch (e){
+
+          }
+          //      获取单聊离线
+          this.getSofflineMessageAction({uid:this.getUserId,offlineKey:''})
+          this.setIsFirstLogin(false)
+        }
+
+      },
+      'msgListStore.activeWindowId'(n){
+        this.setChatRightBoxState(false)
+        this.setChatRightFriendBoxState(false)
+      },
+      'msgListStore.activeTyep'(){
+        this.setChatRightBoxState(false)
+        this.setChatRightFriendBoxState(false)
+      },
+      'friendsListStore.groupChatInfoList'(){
+        if(this.friendsListStore.groupChatInfoList.data.is_add == 1) {
+          this.setGroupInfoState({name:'isAddFriend',state:true})
+        }else{
+          this.setGroupInfoState({name:'isAddFriend',state:false})
+        }
+        if(this.friendsListStore.groupChatInfoList.data.is_forbidden == 1) {
+          this.setGroupInfoState({name:'disableSpeack',state:false})
+        }else{
+          this.setGroupInfoState({name:'disableSpeack',state:true})
+        }
+        if(this.friendsListStore.groupChatInfoList.data.is_pull == 1) {
+          this.setGroupInfoState({name:'addUserInGroup',state:true})
+        }else{
+          this.setGroupInfoState({name:'addUserInGroup',state:false})
+        }
+        if(this.friendsListStore.groupChatInfoList.data.is_apply == 1) {
+          this.setGroupInfoState({name:'saoMaGroupJoin',state:true})
+        }else{
+          this.setGroupInfoState({name:'saoMaGroupJoin',state:false})
+        }
+      },
+      'msgListStore.friendMsgMap':{
+        handler:function(val){
+          for(var i in this.msgListStore.friendMsgMap){
+            if(this.msgListStore.friendMsgMap[i].msgList){
+              for(var v in this.msgListStore.friendMsgMap[i].msgList){
+                if(this.msgListStore.friendMsgMap[i].msgList[v].status=="error"){
+//                  ("againSenAllTxt",this.msgListStore.friendMsgMap[i].msgList[v]);
+                  this.retrySed(this.msgListStore.friendMsgMap[i].msgList[v]);
+                }
+              }
+            }
+          }
+        },
+        deep: true
+      },
+
+    },
+    methods: {
+      ...mapMutations([
+        "setPicture",
+        "setModalState",
+        "setIsAddUser",
+        "setChatRightBoxState",
+        "setChatRightFriendBoxState",
+        "deleteChatWindow",
+        "setInGroupUser",
+        "deleteMessageMap",
+        "clearChatHisTory",
+        "setIsFirstLogin",
+        "setGroupInfoState",
+        "setGroupUserSearch"
+      ]),
+
+      ...mapActions([
+        'editGroupSelfAction',
+        'editGroupAction',
+        'delGroupAction',
+        'signOutGroupAction',
+        'getGroupChatInfoAction',
+        "deleteFriendInfo",
+        "getGroupUserInfoAction",
+        "setIsAddAction",
+        "disableSpeackAction",
+        "addMyFriendAction",
+        "editFriendInfo",
+        "getFriendList",
+        "getGroupOfflineMessageAction",
+        "getSofflineMessageAction",
+        "getFriendInfoAction",
+        "setIsPullAction",
+        "getGroupNoticeAction",
+        "getClearMessageAction",
+        "saoMaGroupJoinAction",
+        "addPhoneAction",
+        "editGroupCover",
+        "blackFriendInfo",
+        "retrySed",
+      ]),
+
+      pictureGroup(e) {
+        var time = new Date().getTime();
+        var files = e.target.files[0]
+        let fileType = files.name.substr(files.name.lastIndexOf(".")).toLowerCase() || '.jpg'
+        var file = new File([files],time + "_web" +fileType, {
+          type: files.type
+        });
+        const isJPG =/^image\/(jpeg|png|jpg|gif)$/.test(file.type);
+        const isLt2M = file.size / 1024 / 1024 < 2;
+        if (!isJPG) {
+          Message({
+            message:'发送图片只能是 JPG PNG jif格式!',
+            type:"warning",
+            showClose:true
+          })
+          return false
+        }else{
+          let sendData = new FormData()
+
+          sendData.append('file', file)
+
+          this.addPhoneAction(sendData).then(res => {
+            this.editGroupCover({
+              self_uid:this.getUserId,
+              group_id:this.msgListStore.activeWindowId,
+              group_cover:res.path
+            }).then(res=>{
+              this.getGroupChatInfoAction({self_uid:this.getUserId,group_id:this.msgListStore.activeWindowId}).then((data)=>{
+
+              })
+            })
+          })
+        }
+      },
+      goBottom() {
+         this.$refs.chatMessage.goBottom()
+      },
+      markNameFocus(){
+        this.editRemarkname = false
+        let data = {
+          self_uid:this.getUserId,
+          friend_uid:this.friendsListStore.friendInfo.id,
+          remarks_name:this.friendsListStore.friendInfo.remarks_name,
+          friend_phone:this.friendsListStore.friendInfo.phone
+        }
+        this.editFriendInfo(data).then(res=>{
+          if(res.code == 10002){
+            this.getFriendList({self_uid:this.getUserId})
+          }else{
+            this.getFriendInfoAction({self_uid:this.getUserId,friend_uid:this.msgListStore.activeWindowId})
+          }
+
+        })
+      },
+      checkLength(v){
+        let t =v.replace(/[\u4e00-\u9fa5]/g,'');//替换中文
+        return (v.length-t.length)*2+t.length<=24;//判断长度
+      },
+      addMyFriend(){
+        this.addMyFriendAction({
+          self_uid:this.getUserId,
+          friend_uid:this.friendsListStore.friendInfo.id,
+          agree:0,
+          add_msg:'',
+        })
+      },
+//      设置能否添加好友
+      setAddFriendFn(){
+        let data = {
+          self_uid:this.getUserId,
+          group_id:this.msgListStore.activeWindowId,
+          status:this.friendsListStore.isAddFriend ? 1 : 2
+        }
+        this.setIsAddAction(data).then(()=>{
+          this.getGroupChatInfoAction({self_uid:this.getUserId,group_id:this.msgListStore.activeWindowId})
+        })
+      },
+      //      设置开启禁言
+      setDisableSpeackFn(){
+        let data = {
+          self_uid:this.getUserId,
+          group_id:this.msgListStore.activeWindowId,
+          status:this.friendsListStore.disableSpeack ? 2 : 1
+        }
+        this.disableSpeackAction(data).then(()=>{
+          this.getGroupChatInfoAction({self_uid:this.getUserId,group_id:this.msgListStore.activeWindowId})
+        })
+      },
+      setIsGetPeopleFn(){
+        let data = {
+          self_uid:this.getUserId,
+          group_id:this.msgListStore.activeWindowId,
+          status:this.friendsListStore.isGetPeople ? 1 : 2
+        }
+        this.setIsPullAction(data).then(()=>{
+          this.getGroupChatInfoAction({self_uid:this.getUserId,group_id:this.msgListStore.activeWindowId})
+        })
+      },
+      //      设置开启 扫码通知是否开启
+      saoMaGroupJoinFn(){
+        let data = {
+          owner_uid:this.getUserId,
+          group_id:this.msgListStore.activeWindowId,
+          status:this.friendsListStore.saoMaGroupJoin ? 1 : 2
+        }
+        this.saoMaGroupJoinAction(data).then(()=>{
+          this.getGroupChatInfoAction({self_uid:this.getUserId,group_id:this.msgListStore.activeWindowId})
+        })
+      },
+
+
+      clearHistoryFn(){
+
+        this.$confirm('清空聊天消息, 是否继续?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+
+          if(this.selectedChat.chatType == 2){
+            let friendArr = this.msgListStore.roomMsgMap[this.selectedChat.id].msgList
+            if(friendArr.length > 0){
+              let unique_value = friendArr[friendArr.length - 1].unique_value
+              let chaType = 1
+              this.getClearMessageAction({group_id:this.selectedChat.id,id:this.getUserId,message_id:unique_value,type:chaType})
+            }
+          }
+          if(this.selectedChat.chatType == 1){
+            let friendArr = this.msgListStore.friendMsgMap[this.selectedChat.id].msgList
+            if(friendArr.length > 0){
+              let unique_value = friendArr[friendArr.length - 1].unique_value
+              let chaType = 2
+              this.getClearMessageAction({group_id:this.selectedChat.id,id:this.getUserId,message_id:unique_value,type:chaType})
+            }
+          }
+          this.clearChatHisTory({id:this.selectedChat.id,chatType:this.selectedChat.chatType})
+
+
+
+        }).catch(() => {
+
+        });
+      },
+      deleteFriend(){
+        this.$confirm('删除好友不再联系, 是否继续?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+
+          this.blackFriendInfo({self_uid:this.getUserId,friend_uid:this.selectedChat.id}).then(()=>{
+            this.deleteChatWindow({id:this.selectedChat && this.selectedChat.id || this.msgListStore.activeWindowId,chatType:1})
+            this.deleteMessageMap({id: this.selectedChat && this.selectedChat.id || this.msgListStore.activeWindowId,chatType:1})
+            this.setChatRightFriendBoxState(false)
+          })
+        }).catch(() => {
+
+        });
+      },
+      openUserInfo(item){
+        if(this.deleteUsers) {
+          item.checked = !item.checked
+        }else{
+          if(this.getUserId == item.uid){
+            Message({
+              message:'不能查看自己',
+              type:"warning",
+              showClose:true
+            })
+            return
+          }
+          this.getFriendInfoAction({
+            self_uid: this.getUserId,
+            friend_uid: item.uid
+          }).then((data)=>{
+            if(this.friendsListStore.groupChatInfoList.data.is_add == 1 || this.isManagement || this.isBoss || data.is_friend == 1){
+              this.getGroupUserInfoAction({self_uid:this.getUserId,friend_uid:item.uid,group_id:this.msgListStore.activeWindowId}).then((res)=>{
+                this.setModalState('groupUserInfoState')
+              })
+            }else{
+              Message({
+                message:'群主已经开启群员不能加好友',
+                type:"warning",
+                showClose:true
+              })
+            }
+          })
+
+
+        }
+      },
+      openQunliaoAdd(){
+
+        if(this.friendsListStore.groupChatInfoList.data.is_pull == 2 && !this.isBoss && !this.isManagement){
+          Message({
+            message:'已设置为禁止拉人进群',
+            type:"warning",
+            showClose:true
+          })
+          return
+        }
+        this.setIsAddUser(true)
+        this.setInGroupUser(this.friendsListStore.groupChatInfoList.data.user_info)
+        this.setModalState('AddContactState')
+
+      },
+      deleteQunYuan(){
+        this.getGroupChatInfoAction({self_uid:this.getUserId,group_id:this.msgListStore.activeWindowId})
+        this.deleteUsers = true
+      },
+      deleteQunUserFn(){
+        let list = this.friendsListStore.groupChatInfoList.data.user_info
+        let state = list.some(i => i.checked)
+        if(!state) {
+          Message({
+            message:'请选择要删除的群员',
+            type:"warning",
+            showClose:true
+          })
+          return
+        }
+        let arr = [];
+        list.map(item=>{
+          if(item.checked){
+            arr.push(item.uid)
+          }
+        })
+        this.$confirm('踢出选中群员, 是否继续?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+
+          this.delGroupAction({self_uid:this.getUserId,group_id:this.msgListStore.activeWindowId,del_uid:arr.join(",")})
+
+          this.deleteUsers = false
+        }).catch(() => {
+//          this.$message({
+//            type: 'info',
+//            message: '已取消删除'
+//          });
+        });
+      },
+      qlnameBlur(){
+        if(!this.friendsListStore.groupChatInfoList.data.group_name){
+          this.$message.warning('群名不能为空!');
+          return
+        }
+        this.setQlName = false
+        if(this.isManagement || this.isBoss){
+          this.editGroupAction({self_uid:this.getUserId,
+            group_id:this.msgListStore.activeWindowId,
+            group_name:this.friendsListStore.groupChatInfoList.data.group_name,
+            describe:''})
+        }
+
+      },
+      editQlname(){
+        if(this.isManagement || this.isBoss){
+          this.setQlName = true
+        }
+      },
+      //      打开群公告
+      openQunGonggao(){
+        if(this.isManagement || this.isBoss){
+          this.editGongGaoVisible = true
+        }else{
+          this.$alert(this.friendsListStore.groupChatInfoList.data.describe || '群主还未发布公告','群名称:' + this.friendsListStore.groupChatInfoList.data.group_name, {
+            confirmButtonText: '确定',
+            callback: action => {
+//            this.$message({
+//              type: 'info',
+//              message: `action: ${ action }`
+//            });
+            }
+          });
+        }
+      },
+//      设置群公告
+      sureQunGgSet(){
+        this.editGroupAction({
+          self_uid:this.getUserId,
+          group_id:this.msgListStore.activeWindowId,
+          group_name:this.friendsListStore.groupChatInfoList.data.group_name,
+          describe:this.friendsListStore.groupChatInfoList.data.describe,
+        }).then((data)=>{
+          this.editGongGaoVisible = false
+          this.getGroupNoticeAction({self_uid:this.getUserId,group_id:this.msgListStore.activeWindowId})
+        })
+      },
+
+//      editQlNickname(){
+//        this.setQlNickname = true
+//      },
+//      qlNicknameBlur(){
+//        this.setQlNickname = false
+//        this.editGroupSelfAction({self_uid:this.getUserId,
+//          group_id:this.msgListStore.activeWindowId,
+//          user_name:this.friendsListStore.groupChatInfoList.data.user_name})
+//      },
+      delQlOutFn(){
+        this.$confirm('退出该群聊，不可恢复, 是否继续?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          this.signOutGroupAction({self_uid:this.getUserId,group_id:this.msgListStore.activeWindowId})
+          this.deleteMessageMap({id:this.msgListStore.activeWindowId,chatType:2})
+        }).catch(() => {
+//          this.$message({
+//            type: 'info',
+//            message: '已取消删除'
+//          });
+        });
+
+      },
+      shanchuQunFn(){
+        this.$confirm('删除该群聊,不可恢复. 是否继续?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          this.delGroupAction({self_uid:this.getUserId,group_id:this.msgListStore.activeWindowId})
+          this.deleteMessageMap({id:this.msgListStore.activeWindowId,chatType:2})
+        }).catch(() => {
+//          this.$message({
+//            type: 'info',
+//            message: '已取消删除'
+//          });
+        });
+      }
+
+    },
+    components:{
+
+    },
+    computed: {
+      ...mapState([
+        "chatListStore",
+        'friendsListStore',
+        "msgListStore",
+        "indexStore",
+        "wechatIMstore",
+      ]),
+      ...mapGetters([
+        'getUserId',
+        "selectedChat",
+        "isBoss",
+        "isManagement",
+        "getGroupUsers"
+      ]),
+
+      managementCount(){
+        let count = 0
+        this.friendsListStore.groupChatInfoList.data.user_info.forEach((u)=>{
+          if(u.role == 2){
+            count++
+          }
+        })
+        return count
+      },
+    },
+    filters:{
+
+    }
+  }
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style lang="less" scoped>
+  .hideFile{
+    position: absolute;
+    left: 0px;
+    top: 0;
+    opacity: 0;
+    width: 100% !important;
+    height: 100%;
+  }
+  @-moz-keyframes doudong{
+    0%{-moz-transform:scale(1);}
+    10%,20%{-moz-transform:scale(1) rotate(-3deg);}
+    30%,50%,70%,90%{-moz-transform:scale(1) rotate(3deg);}
+    40%,60%,80%{-moz-transform:scale(1) rotate(-3deg);}
+    100%{-moz-transform:scale(1) rotate(0);}
+  }
+  @-webkit-keyframes doudong{
+    0%{-webkit-transform:scale(1);}
+    10%,20%{-webkit-transform:scale(1) rotate(-3deg);}
+    30%,50%,70%,90%{-webkit-transform:scale(1) rotate(3deg);}
+    40%,60%,80%{-webkit-transform:scale(1) rotate(-3deg);}
+    100%{-webkit-transform:scale(1) rotate(0);}
+  }
+  .qun-Modal {
+    width: 100%;
+    height: 180px;
+  }
+  .content {
+    display: flex;
+    width: 800px;
+    .msglist{
+      width: 250px;
+      background-color:#e6e5e5;
+      cursor: pointer;
+      position: relative;
+      // 阻止复制
+      -moz-user-select: none;
+      -webkit-user-select: none;
+      -ms-user-select: none;
+      -khtml-user-select: none;
+      user-select: none;
+      /*background:url("../../../assets/weChat/private_bg.png") no-repeat ;*/
+    }
+    .chatbox {
+      flex: 1
+    }
+  .look-right-Box {
+    position: absolute;
+    top: 0px;
+    right: -260px;
+    width: 260px;
+    height: 650px;
+    background-color: #f2f2f2;
+    border: 1px solid #e7e7e7;
+    z-index:12;
+    padding-bottom: 50px;
+    overflow: auto;
+    .friend-message {
+      .look-new-friend-detail {
+        padding: 5px 0 5px 5px;
+        border-bottom:1px solid #e7e7e7;
+        .look-new-friend-user {
+          margin-left: 15px;
+          text-align: left;
+        .look-new-friend-name {
+          font-size: 14px;
+          font-weight: 600;
+          color:#000;
+          img {
+            width: 15px;
+            height: 15px;
+            margin-left: 5px;
+          }
+        }
+        .look-new-friend-diqu {
+          font-size: 13px;
+        }
+
+
+        }
+        img {
+          border-radius: 5px;
+          width: 54px;
+          height: 54px;
+        }
+      }
+      .friend-other-message {
+        border-bottom: 10px solid #e5e5e5;
+        border-top: 10px solid #e5e5e5;
+        .other-message-item {
+          padding: 12px 5px;
+          background-color: #fff;
+          font-size:14px;
+          border-bottom: 1px solid #e5e5e5;
+          span {
+            display: inline-block;
+            width: 80px;
+            text-align: left;
+            color:#000;
+          }
+          .remark-edit {
+            a:hover {
+              border: 1px solid #B8C4D1;
+              background-color: #ECEEF0;
+              border-radius: 4px;
+              padding: 2px;
+            }
+            input {
+              width: 135px;
+              border-radius: 3px;
+              border:1px solid #ddd;
+              padding: 3px 0;
+            }
+          }
+        }
+
+      }
+    }
+    .right-all-user {
+      padding:0px 10px 0px 10px ;
+      .all-user-count-msg {
+        min-height: 40px;
+        text-align: center;
+        input {
+          width: 100%;
+          margin: 5px 0;
+          height: 30px;
+          padding: 0 5px;
+          border-radius: 5px;
+        }
+        p {
+          color:#333;
+          font-size: 15px;
+          line-height: 40px;
+        }
+        div {
+          span {
+            display: inline-block;
+            padding: 1px 12px;
+            border-radius: 15px;
+            margin-top: 6px;
+            background-color: #7e8c8d;
+            color:#fff;
+            cursor: pointer;
+          }
+          .delete-select {
+            background-color: #FF4202;
+          }
+        }
+      }
+      ul{
+        overflow:auto;
+        max-height: 235px;
+        border-bottom:1px solid #e7e7e7;
+        padding: 5px 0;
+        .cancel-add{
+          /*padding-top: 12px;*/
+            div{
+              border: 1px solid #ccc;
+              color: #aaa;
+            }
+        }
+         li {
+          position: relative;
+           text-align: center;
+           width: 54px;
+           height: 75px;
+           float: left;
+           cursor: pointer;
+           color:#666;
+            &:last-child {
+
+
+             }
+           .qunz-icon2{
+             position: absolute;
+             width: 12px;
+             height: 12px;
+             top: -3px;
+             right: -2px;
+           }
+           /*margin: 5px;*/
+           div {
+             width: 45px;
+             height: 45px;
+             margin: 0 5px;
+             font-size: 28px;
+             border-radius: 5px;
+             img.doudou {
+               border: 0;
+               -webkit-animation: doudong 1.5s .2s ease infinite;
+               -moz-animation: doudong 1.5s .2s ease infinite;
+             }
+           }
+           p {
+             line-height: 26px;
+             font-size: 13px;
+           }
+           img {
+             width: 40px;
+             height: 40px;
+             border-radius: 5px;
+           }
+           .check-user-det {
+             position: absolute;
+             right: 1px;
+             top: -3px;
+           }
+         }
+      }
+    }
+    &.showbox-enter-active, &.showbox-leave-active {
+                               transition: all .5s;
+                             }
+    &.showbox-enter,&.showbox-leave-active {
+                       opacity: 0;
+                     }
+
+    }
+    .qunliao-message {
+      padding: 10px 5px 0px 5px;
+      .ql-user-edit {
+        background-color: #fff;
+        padding: 12px;
+        cursor: pointer;
+        margin-bottom:5px;
+        position: relative;
+        span {
+          color:#333;
+          font-size: 14px;
+        }
+        div {
+          color:#999;
+          width: 100px;
+        }
+        input {
+          width: 120px;
+        }
+      }
+    }
+    .clear-message-btn  {
+      background-color: #F56C6C;
+      line-height: 42px;
+      text-align: center;
+      color:#fff;
+      margin:  0 auto;
+      width: 230px;
+      font-size: 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      &.add {
+       background-color: #00dc41;
+        margin-bottom: 5px;
+      }
+    }
+    .gg_div {
+      height: 60px;
+      width: auto;
+      word-break:break-all;
+      display:-webkit-box;
+      -webkit-line-clamp:3;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+    }
+    .ql-gonggao-content {
+      cursor: pointer;
+      margin: 5px;
+      background-color: #fff;
+      p{
+        line-height: 28px;
+        font-size: 14px;
+        padding-left: 10px;
+        color:#000;
+      }
+      div {
+        padding: 5px 5px 5px  10px;
+        height: 25px;
+        width: 238px;
+        word-break:break-all;
+        display:-webkit-box;
+        -webkit-line-clamp:1;
+        -webkit-box-orient:vertical;
+        overflow:hidden;
+      }
+    }
+  }
+</style>

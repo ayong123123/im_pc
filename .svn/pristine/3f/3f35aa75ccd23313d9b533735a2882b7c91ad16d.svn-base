@@ -1,0 +1,209 @@
+<!-- 文本 -->
+<template>
+  <div>
+    <div class="main audio"  :class="{ self: msg.userMsg || msg.send_uid == getUserId}">
+      <img class="avatar" width="36" height="36" v-lazy="msg.head_portrait" v-if="msg.head_portrait" @click="findUser(msg)" />
+      <img class="avatar" width="36" height="36" v-lazy="chatuserInfoStore.dataGetInfo.head_portrait" v-else-if="msg.send_uid == getUserId" @click="findUser(msg)" />
+      <img class="avatar" width="36" height="36" v-lazy="selectedChat.user.img" v-else @click="findUser(msg)" />
+
+      <div>
+        <!--{{getTimes(msg.create_time)}}-->
+        <p  v-if="msg.userMsg || msg.send_uid == getUserId">
+        {{chatuserInfoStore.dataGetInfo.nickname}}
+      </p>
+        <p  v-else-if="msgListStore.activeTyep == 1">
+        {{msgListStore.activeName}}
+      </p>
+        <p   v-else>
+        {{getGroupRemarkName({uid:msg.asFrom,send_uid:msg.send_uid}) || msg.nickname || msg.username}}
+      </p>
+        <div class="whatsay" :style="{textAlign: (msg.userMsg || msg.send_uid == getUserId) ? 'right' : 'left' }">
+          <audio controls="controls"  ref="audio" data-flag="false" class="audio_tag" style="display: none;">
+            <source :src="chatObj.qiniu_url" type="audio/wav" />
+            <source :src="chatObj.qiniu_url" type="audio/mp3" />
+            <p>格式不支持</p>
+          </audio>
+          <div class="whatsay_text" :style="{width: (chatObj.time*1 + 100) +'px',display: 'inline-block'}" @click="playAudio(msg)"  @contextmenu.prevent="messageBack()">
+            {{chatObj.time}}'' &nbsp;
+            <img src="@/assets/weChat/yuyin_left.png" alt="" width="18" style="vertical-align: sub" v-if="(msg.userMsg && !msg.isPlay) || (msg.send_uid == getUserId  && !msg.isPlay)">
+            <img src="@/assets/weChat/yuyin_right.png" alt="" width="18" style="vertical-align: sub" v-else-if="!msg.isPlay">
+            <img src="@/assets/weChat/laba_left.gif" alt="" width="18" style="vertical-align: sub" v-if="(msg.userMsg && msg.isPlay) || (msg.send_uid == getUserId  && msg.isPlay)">
+            <img src="@/assets/weChat/laba_right.gif" alt="" width="18" style="vertical-align: sub" v-else-if="msg.isPlay">
+          </div>
+          <!--<div class="do-option flex-around" v-show="options" v-if="msg.userMsg || msg.send_uid == getUserId || (getUserId == friendsListStore.groupChatInfoList.data.owner_uid && msgListStore.activeTyep == 2)">-->
+            <!--<span  @click="messageBack()">-->
+              <!--删除-->
+            <!--</span>-->
+          <!--</div>-->
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+  import { mapGetters, mapState ,mapMutations ,mapActions} from 'vuex'
+  import {getTimes,getTimesYueRi} from '@/common/common'
+  import _config from '@/configWX/configWX'
+
+  export default {
+    props: ['msg'],
+    computed: {
+      ...mapGetters([
+        'getUserId',
+        'selectedChat',
+        "getGroupRemarkName",
+        "isBoss",
+        "isManagement",
+      ]),
+      ...mapState([
+        "chatuserInfoStore",
+        "msgListStore",
+        "friendsListStore",
+      ]),
+
+      chatObj(){
+        try {
+          var obj =JSON.parse(this.msg.content);
+          return obj || ''
+        }catch (e){
+
+        }
+      },
+
+    },
+    data(){
+      return {
+        getTimes: getTimes,
+        config: _config,
+        getTimesYueRi: getTimesYueRi,
+        diyState: true,
+        atimer: null,
+        reading: false,
+        longClick: 0,
+        timeOutEvent: 0,
+        timeOutEvent2: 0,
+        options: false,
+        errorTimer: null,
+      }
+    },
+    mounted() {
+
+    },
+    watch: {
+
+    },
+    created(){
+      this.msg.isPlay = false;
+      // let audio = this.$refs.audio;
+      // audio.pause();
+
+      this.errorTimer = setTimeout(()=>{
+        this.setError()
+      },10000)
+    },
+    beforeDestroy(){
+      clearTimeout(this.atimer)
+      clearTimeout(this.errorTimer)
+    },
+    methods: {
+      ...mapActions([
+
+      ]),
+      ...mapMutations([
+        "setAudioUnreadIm",
+        "setChatGameState"
+      ]),
+      messageBack(){
+        if((this.msg.send_uid && this.msg.send_uid == this.getUserId) || (this.msg.userMsg && this.msg.status == this.config.MSG_STATUS_SUCCEED) || (this.isBoss && this.msgListStore.activeTyep == 2) || (this.isManagement && this.msgListStore.activeTyep == 2)){
+          this.$confirm('是否撤回该消息?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            this.$emit('messageBack')
+          }).catch(() => {
+//          this.$message(+{
+//            type: 'info',
+//            message: '已取消删除'
+//          });
+          });
+        }
+
+      },
+      //播放、暂停语音
+      playAudio(data) {
+        this.$emit('audioPaused');
+        // data.isPlay = false;
+        console.log(data)
+        let audio = this.$refs.audio;
+        let flag = audio.getAttribute('data-flag');
+        if(flag == 'true') {
+          audio.play();
+          audio.setAttribute('data-flag','false')
+          this.$set(data,'isPlay',true)
+
+          audio.addEventListener('ended', () =>{ //播放完成自动关闭
+            audio.pause();
+            audio.setAttribute('data-flag','true')
+            this.$set(data,'isPlay',false)
+          }, false);
+        }else {
+          audio.currentTime = 0;
+          audio.pause();
+          audio.setAttribute('data-flag','true')
+          this.$set(data,'isPlay',false)
+        }
+        console.log(data.isPlay)
+      },
+
+      setError(){
+        if ((!this.msg.code || this.msg.code == 3) && this.msg.status == this.config.MSG_STATUS_SED) {
+          this.msg.status = this.config.MSG_STATUS_ERROR
+          clearTimeout(this.errorTimer)
+        }
+      },
+      findUser(u){
+        this.$emit("setFindUser",u)
+      },
+    },
+  }
+</script>
+
+<style lang="less" scoped>
+  .user-chat-message .message-wrapper .main .avatar{margin-right: 15px;}
+  .user-chat-message .message-wrapper .main .whatsay_text{
+    display: inline-block;
+    /*margin-left: 10px;*/
+    position: relative;
+    padding: 6px 10px;
+    max-width: 330px;
+    min-height: 36px;
+    line-height: 24px;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    font-size: 14px;
+    text-align: left;
+    word-break: break-all;
+    word-wrap: break-word;
+    background-color: #fff;
+    border-radius: 4px;
+    color: #333;
+  }
+  .user-chat-message .message-wrapper .main .whatsay_text:before {
+    content: " ";
+    position: absolute;
+    top: 12px;
+    right: 100%;
+    border: 6px solid transparent;
+    border-right-color: #fff;
+  }
+  .user-chat-message .message-wrapper .self .whatsay_text{background-color: #9eea6a;}
+  .user-chat-message .message-wrapper .self .whatsay_text:before {
+    right: -12px;
+    vertical-align: middle;
+    border-right-color: transparent;
+    border-left-color: #9eea6a;
+  }
+</style>

@@ -1,0 +1,7 @@
+<!DOCTYPE html><html><head>
+    <script src="config.js"></script><script>if (window.location.protocol == "https:" ) {
+  window.hostIm =window.hostIm.replace(/ws/g, "wss");
+  window.wsHostIm =  window.wsHostIm.replace(/http/g, "https");
+}</script><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title></title><link rel=stylesheet href=//at.alicdn.com/t/font_1313416_zmvk584h67o.css><link href=./pcImstatic/css/app.372bad7d630a9b2cc591f06eb3a998e0.css rel=stylesheet></head><body><div id=app></div><script type=text/javascript src=./pcImstatic/js/manifest.daa26956fb40f855bead.js></script><script type=text/javascript src=./pcImstatic/js/vendor.8267cbffc480e964e97b.js></script><script type=text/javascript src=./pcImstatic/js/app.b7282f5720d0bd437a0e.js></script></body><style>html{
+    font-size: 12px;
+  }</style></html>

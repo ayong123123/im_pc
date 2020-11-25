@@ -1,0 +1,204 @@
+<!-- 红包 -->
+<template>
+  <div>
+    <div class="time"><span v-if="!msg.showTime">{{getTimes(msg.create_time)}}</span></div>
+    <div class="main"  :class="{self:msg.userMsg  || msg.send_uid == getUserId}">
+
+       <span  class="chat-username" v-if="msg.userMsg || msg.send_uid == getUserId">
+        <wx-level :msg="msg"/>{{chatuserInfoStore.dataGetInfo.nickname}}
+      </span>
+      <span  class="chat-username" v-else-if="msgListStore.activeTyep == 1">
+        {{msgListStore.activeName}}<wx-level :msg="msg"/>
+      </span>
+      <span  class="chat-username" v-else>
+        {{getGroupRemarkName({uid:msg.asFrom,send_uid:msg.send_uid}) || msg.nickname || msg.username}}<wx-level :msg="msg"/>
+      </span>
+      <img class="avatar" width="36" height="36" v-lazy="msg.head_portrait" v-if="msg.head_portrait" @click="findUser(msg)" @contextmenu.prevent="openHandleUserVible(msg)"/>
+      <img class="avatar" width="36" height="36" v-lazy="chatuserInfoStore.dataGetInfo.head_portrait" v-else-if="msg.send_uid == getUserId" @click="findUser(msg)" @contextmenu.prevent="openHandleUserVible(msg)"/>
+      <img class="avatar" width="36" height="36" v-lazy="selectedChat.user.img" v-else @click="findUser(msg)" @contextmenu.prevent="openHandleUserVible(msg)" />
+      <!--<img class="avatar" width="36" height="36" src="@/assets/weChat/default_avatar.png" v-else  @click="findUser(msg)" />-->
+      <!--右键弹窗-->
+      <div class="handleConfig" v-show="chatListStore.handleUserVible && forbiddenInfo.unique_value ==msg.unique_value && msg.send_uid != getUserId" >
+        <ul>
+          <li @click="isStopTalking(msg)" v-if="forbiddenInfo.forbiddenStatus != 2">
+            禁言
+          </li>
+          <li  @click="isStopTalking(msg)" v-if="forbiddenInfo.forbiddenStatus != 1">
+            解禁
+          </li>
+          <li @click="removeGroupUser(msg)">
+            移除
+          </li>
+          <li @click="findUser(msg)">
+            @TA
+          </li>
+        </ul>
+      </div>
+
+      <div class="chat-red-pack chat-content-dom">
+        <div class="red-envelopes" :class="{opacity:msg.redState}"  @click="getRedPackFn">
+          <img src="../../../../assets/weChat/red_envelopes_icon.png" alt="" width="52" height="52">
+          <div class="red-envelopes-message">
+            <div class="long-text">{{chatObj.topic}}</div>
+          </div>
+        </div>
+        <p>
+          普通红包
+        </p>
+        <i class="el-icon-loading chat-loading" v-if="msg.status == config.MSG_STATUS_SED"></i>
+        <i class="el-icon-warning chat-loading error" v-if="msg.status == config.MSG_STATUS_ERROR" @click="chongFa()"></i>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+  import { mapGetters, mapState ,mapMutations ,mapActions} from 'vuex'
+  import {Message} from 'element-ui'
+  import {getTimes,getSession2 } from '@/common/common'
+  import _config from '@/configWX/configWX'
+  export default {
+    props: ['msg','forbiddenInfo'],
+    data(){
+      return {
+        getTimes:getTimes,
+        config:_config,
+        errorTimer:null,
+      }
+    },
+    computed: {
+      ...mapGetters([
+        'selectedChat',
+        "getUserId",
+        "getGroupRemarkName"
+      ]),
+      chatObj(){
+        var obj =JSON.parse(this.msg.content);
+        return obj
+      },
+      ...mapState([
+        'chatListStore',
+        "chatuserInfoStore",
+        "msgListStore"
+      ])
+    },
+    beforeDestroy(){
+      clearTimeout(this.errorTimer)
+    },
+    created(){
+      this.errorTimer = setTimeout(()=>{
+        this.setError()
+      },10000)
+    },
+    mounted() {
+
+    },
+    watch: {
+
+    },
+    methods: {
+      //禁言
+      isStopTalking(u) {
+        this.$emit('isStopTalking',u)
+      },
+      //移除
+      removeGroupUser(u) {
+        this.$emit('removeGroupUser',u)
+      },
+      openHandleUserVible(u) {
+        this.$emit("openHandleUserVible",u)
+      },
+      setError(){
+        if ((!this.msg.code || this.msg.code == 3) && this.msg.status == this.config.MSG_STATUS_SED) {
+          this.msg.status = this.config.MSG_STATUS_ERROR
+          clearTimeout(this.errorTimer)
+        }
+      },
+      chongFa(){
+        if((this.msg.send_uid && this.msg.send_uid == this.getUserId) || (this.msg.userMsg && this.msg.status == this.config.MSG_STATUS_ERROR)){
+          this.$confirm('是否重发该消息?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            this.$emit("reSendMessage",this.msg)
+          }).catch(() => {
+//          this.$message(+{
+//            type: 'info',
+//            message: '已取消删除'
+//          });
+          });
+        }
+
+      },
+      findUser(u){
+        this.$emit("setFindUser",u)
+      },
+      ...mapMutations([
+        "setRedSendUidType",
+        "setSendRedPackMessage",
+        "setModalState",
+        "setGetOrCheck"
+      ]),
+      ...mapActions([
+        "getRedPackAction",
+        "firstGrabRedEnvelopeAction"
+      ]),
+      getRedPackFn(){
+        var token = getSession2('token')
+        var repcode = this.chatObj.repcode
+        if(!token){
+          Message({
+            message: "提示:请重新登录",
+            type: "warning",
+            showClose: true,
+          })
+          return
+        }
+        let sendId  = this.msg.send_uid || this.msg.groupmessage && this.msg.groupmessage.sendid
+        this.setRedSendUidType({id:sendId,type:0,unique_value:this.msg.unique_value})
+        let redMessage = {
+          repcode:this.chatObj.repcode,
+          send_head_portrait:JSON.parse(this.msg.content).send_head_portrait||this.msg.head_portrait,
+          send_name:JSON.parse(this.msg.content).send_name || this.msg.nickname ,
+          topic:this.chatObj.topic,
+        }
+        // let redMessage = {
+        //   repcode:this.chatObj.repcode,
+        //   send_head_portrait:this.msg.head_portrait,
+        //   send_name:this.msg.username || this.msg.nickname ,
+        //   topic:this.chatObj.topic,
+        // }
+        this.setSendRedPackMessage(redMessage)
+        this.firstGrabRedEnvelopeAction({token:token,repcode:repcode}).then((data)=>{
+        if(data.code == 140){
+          this.setGetOrCheck(2)
+          this.setModalState('redDetailState')
+        }else{
+          this.setModalState('redPupContainer')
+        }
+      })
+
+
+      }
+
+    },
+    filters: {
+      // 将日期过滤为 hour:minutes
+      time (date) {
+        if (typeof date === 'string') {
+          date = new Date(date);
+        }
+        if(date.getMinutes()<10){
+          return date.getHours() + ':0' +date.getMinutes();
+        }else{
+          return date.getHours() + ':' + date.getMinutes();
+        }
+      }
+    }
+  }
+</script>
+
+<style lang="less" scoped>
+
+</style>

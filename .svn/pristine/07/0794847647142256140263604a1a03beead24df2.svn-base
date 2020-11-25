@@ -1,0 +1,140 @@
+<template>
+  <div>
+    <div class="time"><span>{{getTimes(msg.create_time)}}</span></div>
+    <div class="main" :class="{self:msg.userMsg || msg.send_uid == getUserId}">
+      <img class="avatar" width="36" height="36" v-lazy="msg.head_portrait" v-if="msg.head_portrait" @click="findUser(msg)" />
+      <img class="avatar" width="36" height="36" v-lazy="chatuserInfoStore.dataGetInfo.head_portrait" v-else-if="msg.send_uid == getUserId" @click="findUser(msg)" />
+      <img class="avatar" width="36" height="36" v-lazy="selectedChat.user.img" v-else @click="findUser(msg)" />
+      <!--<img class="avatar" width="36" height="36" src="@/assets/weChat/default_avatar.png" v-else  @click="findUser(msg)" />-->
+      <span  class="chat-username" v-if="msg.userMsg || msg.send_uid == getUserId">
+        {{chatuserInfoStore.dataGetInfo.nickname}}
+      </span>
+      <span  class="chat-username" v-else-if="msgListStore.activeTyep == 1">
+        {{msgListStore.activeName}}
+      </span>
+      <span  class="chat-username" v-else>
+        {{getGroupRemarkName({uid:msg.asFrom,send_uid:msg.send_uid}) || msg.nickname || msg.username}}
+      </span>
+      <div class="chat-record chat-content-dom">
+        <div>
+          <p class="title_p">
+            今日<b style="color:#FBC000">{{recordObj.type == 1 ? '彩票' : recordObj.type == 2 ? '红包' : recordObj.type == 3 ? '综合游戏' : '分享' }}</b>战绩:
+          </p>
+          <div class="records long-text" @contextmenu.prevent="messageBack()">
+            <span>{{recordObj.type == 2 ? '发出' : '投注'}}: <i>{{recordObj.touzhutotal}}</i>   </span> &nbsp;
+            <span v-if="recordObj.type != 3">{{recordObj.type == 1 ? '中奖' : '抢到'}}: <i>{{recordObj.fanjiangtotal}}</i></span> &nbsp;
+            <span>盈亏: <i>{{recordObj.tzyingkuitotal}}</i></span>
+          </div>
+        </div>
+
+        <i class="el-icon-loading chat-loading" v-if="msg.status == config.MSG_STATUS_SED"></i>
+        <i class="el-icon-warning chat-loading error" v-if="msg.status == config.MSG_STATUS_ERROR" @click="chongFa()"></i>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+  import {mapState,mapMutations,mapActions,mapGetters} from 'vuex'
+  import {getTimes,getTimesYueRi} from '@/common/common'
+  import _config from '@/configWX/configWX'
+  export default {
+
+    props: ['msg'],
+    data () {
+      return {
+        getTimes:getTimes,
+        config:_config,
+        getTimesYueRi:getTimesYueRi,
+        errorTimer:null,
+      }
+    },
+    computed:{
+      ...mapState([
+        "msgListStore",
+        'chatListStore',
+        "chatuserInfoStore",
+        "friendsListStore"
+      ]),
+      ...mapGetters([
+        'selectedChat',
+        "getUserId",
+        "getGroupRemarkName",
+        "isBoss",
+        "isManagement",
+      ]),
+      recordObj(){
+        let obj =JSON.parse(this.msg.content) ;
+        return obj;
+      },
+    },
+    watch: {
+
+    },
+    created (){
+      this.errorTimer = setTimeout(()=>{
+        this.setError()
+      },10000)
+    },
+    beforeDestroy(){
+      clearTimeout(this.errorTimer)
+    },
+    mounted () {
+
+    },
+    methods:{
+      ...mapActions([
+
+      ]),
+      ...mapMutations([
+
+      ]),
+      messageBack(){
+        if((this.msg.send_uid && this.msg.send_uid == this.getUserId) || (this.msg.userMsg && this.msg.status == this.config.MSG_STATUS_SUCCEED) || (this.isBoss && this.msgListStore.activeTyep == 2) || (this.isManagement && this.msgListStore.activeTyep == 2)){
+          this.$confirm('是否撤回该消息?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            this.$emit('messageBack')
+          }).catch(() => {
+//          this.$message(+{
+//            type: 'info',
+//            message: '已取消删除'
+//          });
+          });
+        }
+
+      },
+      setError(){
+        if ((!this.msg.code || this.msg.code == 3) && this.msg.status == this.config.MSG_STATUS_SED) {
+          this.msg.status = this.config.MSG_STATUS_ERROR
+          clearTimeout(this.errorTimer)
+        }
+      },
+      chongFa(){
+        if((this.msg.send_uid && this.msg.send_uid == this.getUserId) || (this.msg.userMsg && this.msg.status == this.config.MSG_STATUS_ERROR)){
+          this.$confirm('是否重发该消息?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            this.$emit("reSendMessage",this.msg)
+          }).catch(() => {
+//          this.$message(+{
+//            type: 'info',
+//            message: '已取消删除'
+//          });
+          });
+        }
+
+      },
+      findUser(u){
+        this.$emit("setFindUser",u)
+      },
+    },
+  }
+</script>
+<style lang="less" scoped>
+
+</style>

@@ -1,0 +1,384 @@
+<!-- 聊天列表 -->
+<template>
+  <div class="msglist">
+    <ul v-if="searchedChatlist && searchedChatlist.length > 0">
+      <li v-for="(item,i) in searchedChatlist" class="sessionlist" :class="{ active: item.id == msgListStore.activeWindowId && item.chatType == msgListStore.activeTyep }" @click="selectUserMessage(item)"  @contextmenu.prevent="deleteWindow(item)">
+        <div class="list-left">
+          <img class="avatar"  width="42" height="42"  v-lazy="item.user.img">
+          <span class="message-dian-bar" v-if="item.messages.unRead > 0 && item.chatType == 2">
+            <i class="el-icon-more"></i>
+          </span>
+          <!--<el-badge :is-dot="item.messages.unRead > 0 && item.chatType == 2"  class=""></el-badge>-->
+          <el-badge :value="item.messages.unRead" :max="99" class="message-number-bar" v-if="item.messages.unRead > 0 && (item.chatType == 1 || item.chatType == 3 || item.chatType == 4)">
+          </el-badge>
+        </div>
+        <div class="list-right">
+          <p class="ontop" @click="ontop(item)" v-if="item.chatType ==1 || item.chatType ==2" v-model="topId">
+            <img src="../../../assets/weChat/ontoping.png" alt="" v-if="item.istop">
+            <img src="../../../assets/weChat/ontop.png" alt="" v-else>
+          </p>
+          <p class="name">{{item.user.remarks_name || item.user.name}} <span v-if="item.chatType == 2">({{item.chatCount}})</span></p>
+          <span class="time">{{item.messages.date | time}}</span>
+          <p class="lastmsg" v-html="filterTxt(renderTxt(item.messages.lastMessage))"></p>
+        </div>
+      </li>
+    </ul>
+    <p class="text-center" v-else>暂无聊天记录 快找好友聊聊天吧</p>
+  </div>
+</template>
+
+  <script>
+  import { mapState, mapActions ,mapGetters ,mapMutations } from 'vuex'
+  import emoji from "@/configWX/emoji"
+  export default {
+    data(){
+      return {
+        reg:"操你妈*鸡吧",
+        topId:'',
+        flag :true,
+        islast:false
+      }
+    },
+    computed: {
+      ...mapState([
+        'chatListStore',
+        "msgListStore",
+        "friendsListStore"
+      ]),
+      ...mapGetters([
+        'searchedChatlist',
+        'getUserId',
+        "selectedChat"
+      ])
+    },
+    created(){
+      this.getUserGroup();
+    },
+    methods: {
+      //置顶
+      ontop(data) {
+       this.islast = false;
+       this.flag = true;
+       let arr = [...this.chatListStore.topInfo]
+         if(arr.length>0) {
+         arr.map((item,i)=>{ //相同的就不加了并取消置顶
+           if(item.id == data.id && item.chatType == data.chatType) {
+             this.flag = false;
+             delete item.istop;
+
+             // 更新数据
+             arr.splice(i,1)
+             if(arr.length== 0) {
+               this.islast = true;
+               this.flag = true
+             }
+             this.updateTopInfo(arr)
+           }
+         })
+       }
+
+        if(this.flag || arr.length == 0) {
+          if(this.islast) {
+            this.flag = true;
+            arr = [];
+            this.updateTopInfo([])
+            return
+          }
+          this.setTopInfo(data)
+          this.setChatGoUp({id:data.id,chatType:data.chatType})
+        }
+      },
+      //合并群组操作
+      // mergeGroupHandle() {
+      //   let mergeInfo = JSON.parse(this.chatListStore.mergeGroupInfo.content)
+      //   let mergeId = mergeInfo.mergeId
+      //   let groupId = mergeInfo.groupId
+      //
+      //   let friendsListStore = this.friendsListStore.groupChatList
+      //   let mergeGroupInfo = this.searchedChatlist.filter(item => item.id == mergeId)
+      //   let groupIdInfo = friendsListStore.filter(item => item.id == groupId)
+      //   if (mergeGroupInfo[0]) {
+      //     this.$message({
+      //       message: `群组${mergeGroupInfo[0].user.name}已被合并到${groupIdInfo[0].name}`,
+      //       type: 'success',
+      //       showClose: true
+      //     })
+      //   }
+      // },
+      /*解析表情*/
+      renderTxt  (txt) {
+        let rnTxt = []
+        let match = null
+        const regex = /(\[.*?\])/g
+        let start = 0
+        let index = 0
+        while ((match = regex.exec(txt))) {
+          index = match.index
+          if (index > start) {
+            rnTxt.push(txt.substring(start, index))
+          }
+          if (match[1] in emoji.map) {
+
+            const v = emoji.map[match[1]]
+            rnTxt.push(
+              `<img width="15" class="" src=./pcImstatic/images/faces/${v} />`
+            )
+          } else {
+            rnTxt.push(match[1])
+          }
+          start = index + match[1].length
+        }
+
+
+        try {
+          rnTxt.push(txt.substring(start, txt.length))
+        }catch (e){
+          rnTxt.push(JSON.stringify(txt))
+        }
+
+        var textHthl="";
+        rnTxt.forEach(function(val,index,arr){
+          textHthl+=val;
+        })
+
+        return textHthl
+      },
+      filterTxt(t){
+        let t1 = t
+        let arr = this.reg.split('*')
+        for(let i in arr){
+          try {
+            var imgReg = eval("/" + arr[i] + "(?=[^>]*(<|$))/g");  // 忽略 标签元素
+//            let a= new RegExp(arr[i],"g");
+            t1 = t1.replace(imgReg,'***');
+          }catch (e){
+
+          }
+        }
+        return t1
+
+      },
+      ...mapActions([
+        'getGroupChatInfoAction',
+        "getLastMessageAction",
+        "getGlastMessageAction",
+        "getJudegMessageAction",
+        "getGjudgeMessageAction",
+        "getFriendInfoAction",
+        "getMergeNoticeAction",
+        "getGroupNoticeAction",
+        "delChatEnum",
+        "getUserGroup"
+      ]),
+      ...mapMutations([
+        "setActiveWindow",
+        'deleteChatWindow',
+        "deleteMessageMap",
+        "setRemarkName",
+        "setModalState",
+              "setChatGoUp",
+              "sendNewChat",
+              "setTopInfo",
+              "updateTopInfo"
+      ]),
+      deleteWindow(item){
+        // console.log(item)
+        this.$confirm('删除当前聊天窗口, 是否继续?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          this.deleteChatWindow(item)
+          this.deleteMessageMap(item)
+
+          //删除置顶
+          if(item.istop) {
+            this.ontop(item)
+          }
+        }).catch(() => {
+
+        });
+
+      },
+       selectUserMessage(item){
+         item.messages.unRead = 0
+         // console.log(item.id)
+         if(item.chatType == 4){
+          this.setModalState("groupZhuShou")
+          return
+        }
+         this.setActiveWindow({id:item.id,type:item.chatType,name:item.user.remarks_name || item.user.name ,head_portrait:item.user.img})
+           //            向下拉取最新历史,
+           if(item.chatType == 1){
+//          let friendArr = this.msgListStore.friendMsgMap[item.id].msgList
+//          if(friendArr.length > 0){
+//            //            向下拉取单聊
+//            let unique_value = friendArr[friendArr.length - 1].unique_value
+//            this.getJudegMessageAction({send_uid:this.getUserId,accept_uid:item.id,uniqueId:unique_value,isUpDown:1})
+//          }else {
+             // 无记录 拉取最新记录
+             this.getLastMessageAction({send_uid:this.getUserId,accept_uid:item.id})
+               // .then(res=>{
+               //   this.setActiveWindow({id:item.id,type:item.chatType,name:item.user.remarks_name || item.user.name ,head_portrait:item.user.img})
+               // })
+
+//          }
+           }
+
+           if(item.chatType == 2){
+             // this.msgListStore.activeWindowId
+             //        选择群聊  请求群聊详情
+             const promise1 = this.getGroupChatInfoAction({self_uid:this.getUserId,group_id:item.id});
+             const promise2 = this.getGlastMessageAction({send_id:this.getUserId,group_id:item.id});
+             const promise3 = this.getGroupNoticeAction({self_uid:this.getUserId,group_id:item.id});
+
+             // Promise.all([
+             //   promise1,promise2,promise3
+             // ]).then( res =>{
+             //   this.setActiveWindow({id:item.id,type:item.chatType,name:item.user.remarks_name || item.user.name ,head_portrait:item.user.img})
+             // })
+
+           }
+           if(item.chatType == 3){
+             this.getMergeNoticeAction({Page:1,pageNum:10})
+                     // .then(res=>{
+                     //   this.setActiveWindow({id:item.id,type:item.chatType,name:item.user.remarks_name || item.user.name ,head_portrait:item.user.img})
+                     // })
+           }
+
+
+      }
+    },
+    filters: {
+      // 将日期过滤为 hour:minutes
+      // time (date) {
+      //   date = new Date(date*1000) || new Date();
+      //   if(date.getMinutes()<10){
+      //     return date.getHours() + ':0' +date.getMinutes();
+      //   }else{
+      //     return date.getHours() + ':' + date.getMinutes();
+      //   }
+      // },
+      time (data) {
+        let date = new Date(data * 1000)
+        let Y = date.getFullYear() + '-';
+        let M = (date.getMonth()+1 < 10 ? '0'+(date.getMonth()+1) : date.getMonth()+1) + '-';
+        let d = date.getDate();
+        d = d < 10 ? ('0' + d) : d;
+        let h = date.getHours();
+        h = h < 10 ? ('0' + h) : h;
+        let m = date.getMinutes();
+        m = m < 10 ? ('0' + m) : m;
+        let s = date.getSeconds();
+        s = s < 10 ? ('0' + s) : s;
+        return M + d + ' ' + h + ':' + m;
+      }
+    }
+  }
+</script>
+
+<style lang="less" scoped>
+  .message-number-bar {
+    position: absolute;
+    right: -5px;
+    top: -10px;
+  }
+  .message-dian-bar {
+    position: absolute;
+    right: -10px;
+    top: -4px;
+    font-size: 13px;
+    background-color: #f56c6c;
+    display: inline-block;
+    width: 24px;
+    height: 12px;
+    line-height: 12px;
+    text-align: center;
+    border-radius: 8px;
+    color:#fff;
+  }
+  .msglist{
+    height: 590px;
+    overflow-y: auto;
+    .sessionlist {
+
+      display: flex;
+      padding: 12px;
+      transition: background-color .1s;
+      font-size: 0;
+      .list-left {
+        position: relative;
+        width: 42px;
+        height: 42px;
+      }
+      &:hover{
+         background-color: #ccc;
+      }
+      &.active{
+         background-color:#ccc;
+       }
+       .avatar{
+         border-radius: 2px;
+         margin-right: 12px;
+       }
+       .list-right{
+         position: relative;
+         flex: 1;
+         margin-top: 4px;
+          margin-left:4px;
+         .ontop{
+           position: absolute;
+           right: 0;
+           top:0;
+           width: 12px;
+           height: 12px;
+           cursor: pointer;
+           >img{
+             width: 100%;
+             height: 100%;
+           }
+           &:hover{
+             border:1px solid #9eea6a;
+           }
+           &:hover >img {
+             background: url("../../../../static/images/ontoping.png");
+           }
+         }
+         .name{
+           display: inline-block;
+           vertical-align: top;
+           font-size: 14px;
+           width: 180px;
+           overflow: hidden;
+           white-space: nowrap;
+           text-overflow: ellipsis;
+           color:#333;
+         }
+         .time {
+           position: absolute;
+           right: 0;
+           bottom:-4px;
+           /*float: right;*/
+           color: #999;
+           font-size: 10px;
+           vertical-align: top;
+
+         }
+        .lastmsg {
+          position: absolute;
+          font-size: 12px;
+          width: 115px;
+          height: 20px;
+          color: #999;
+          bottom: 4px;
+          overflow: hidden;
+          white-space:nowrap;
+          text-overflow:ellipsis;
+          top: 23px;
+        }
+
+       }
+
+    }
+  }
+</style>

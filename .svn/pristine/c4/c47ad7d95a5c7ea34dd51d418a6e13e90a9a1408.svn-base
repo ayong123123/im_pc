@@ -1,0 +1,275 @@
+<template>
+  <div class="income">
+    <div class="head_income">
+      <img src="@/assets/weChat/close.png" alt="" @click="setModalState('groupIncomeState')">
+      <span>群收益</span>
+    </div>
+    <div class="filter">
+      <div class="head_filter flex-around">
+        <div class="select" @click="option = !option">
+          {{stateTitle}} <img src="@/assets/weChat/icon_down_gray1.png" alt="" width="15">
+          <ul v-if="option">
+            <li @click="selectGameId({gameId:0,title:'全部'})">全部</li>
+            <li v-for="i in indexStore.partnersList.data" v-if="i.gameId != 0" @click="selectGameId(i)">{{i.title}}</li>
+          </ul>
+        </div>
+        <div class="search" @click="searchCommit">
+          查询
+        </div>
+      </div>
+      <p>
+        总收益: <span>{{formList.Amount || '0.00'}}</span>元，总红包数: <span >{{formList.hbnum || '0'}}</span>个，发包人数: <span>{{formList.person || '0'}}</span>人
+      </p>
+    </div>
+    <div class="content_income">
+      <ul
+        class="list"
+        v-infinite-scroll="load"
+        infinite-scroll-disabled="disabled">
+        <li v-for="(i,index) in allData" class="list-item">
+          <div class="t_bt1">
+            {{i.title}}
+          </div>
+          <p>
+            发包人:{{i.nickname}}
+          </p>
+          <p>
+            金额:{{i.amount}}
+          </p>
+          <p>
+            红包数:{{i.count}}
+          </p>
+          <p>
+            佣金金额:{{i.sfee}}
+          </p>
+          <p>
+            群主佣金比例:{{i.gorate}}%
+          </p>
+          <p>
+            群主佣金: {{i.goincome}}
+          </p>
+          <p>
+            时间:{{i.time}}
+          </p>
+        </li>
+      </ul>
+      <p class="text-center" v-if="noMore">没有更多了</p>
+      <p class="text-center" v-if="loading">加载中...</p>
+    </div>
+  </div>
+</template>
+
+<script>
+  import {mapState,mapMutations,mapActions,mapGetters} from 'vuex'
+  import { Message,MessageBox} from 'element-ui';
+  export default {
+    data () {
+      return {
+        loading: false,
+        count: 3,
+        option:false,
+        page:0,
+        allData:[],
+        formList:[],
+        stateSelected:0,
+        stateTitle:'全部',
+        noMore:true
+      }
+    },
+    computed:{
+      ...mapState([
+        "chatListStore",
+        "indexStore",
+        "msgListStore"
+      ]),
+      ...mapGetters([
+
+      ]),
+      // noMore(){
+      //   return  this.page >= (this.formList.total*1-1)
+      // },
+      disabled () {
+        return this.loading || this.noMore
+      },
+
+    },
+    watch: {
+      'indexStore.groupOwnerList' (newOld) {
+        // console.log(newOld.data)
+        this.formList = newOld
+        this.loading = false
+        if(this.page >= (this.formList.total*1-1)){
+          this.noMore = true
+        }else{
+          this.noMore = false
+        }
+        if (!newOld.data) {
+          this.allData = []
+          this.noMore = true
+          return false
+        }
+        let data = newOld.data
+        if (this.page == 0 && newOld.total == 1 ||  data.length == 0) {
+          this.allData = data
+          return false
+        }
+        if (this.page == 0 && (newOld.total*1 -1) > this.page) {
+          this.allData = data
+          return false
+        }
+        for (let k in data) {
+          this.allData.push(data[k])
+        }
+
+      },
+    },
+    created () {
+      this.getGameListPartnersList({class_id: 6,redHidden:1})
+      this.searchCommit()
+    },
+    mounted () {
+
+    },
+    methods:{
+      ...mapActions([
+        "getGameListPartnersList",
+        "groupOwnerListAction"
+      ]),
+      ...mapMutations([
+        "setModalState"
+      ]),
+      loadMore () {
+        this.page++
+        let obj = {
+          game_id:this.stateSelected,
+          Page: this.page,
+          group_id:this.msgListStore.activeWindowId
+        }
+        this.groupOwnerListAction(obj)
+      },
+      load () {
+        console.log('2222222222222222')
+        if ((this.formList.total*1 -1) > this.page) {
+          this.loading = true
+          setTimeout(() => {
+            this.loadMore()
+          }, 2000)
+        }
+
+      },
+      searchCommit () {
+        this.page = 0
+        this.allData = []
+        let obj = {
+          game_id: this.stateSelected,
+          Page: this.page,
+          group_id:this.msgListStore.activeWindowId
+        }
+        this.groupOwnerListAction(obj).then((res) => {
+          if (res.data.length == 0) {
+            this.formList.Amount = '0.00'
+            this.formList.hbnum = '0'
+            this.formList.person = '0'
+          }
+        })
+      },
+      selectGameId(data){
+        this.stateSelected = data.gameId
+        this.stateTitle = data.title
+      }
+
+    },
+  }
+</script>
+<style lang="less" scoped>
+  .income {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 120;
+    width: 400px;
+    background-color: #EDEDED;
+    border-radius: 5px;
+    overflow: hidden;
+    font-size: 14px;
+    .head_income {
+      height: 40px;
+      line-height:40px;
+      background-color: #EDEDED;
+      text-align: center;
+
+      color:#000;
+      img{
+        position: absolute;
+        top: 5px;
+        right: 10px;
+        width: 30px;
+        height: 30px;
+      }
+    }
+    .filter {
+      background-color: #fff;
+      > p{
+        text-align: center;
+        span{
+          color:#ff0000;
+        }
+      }
+      .head_filter {
+        padding: 10px 0;
+        text-align: center;
+        .select{
+          width: 160px;
+          line-height: 30px;
+          border-radius: 5px;
+          border: 1px solid #ddd;
+          position: relative;
+          cursor: pointer;
+          ul {
+            position: absolute;
+            top: 35px;
+            width: 160px;
+            height: 160px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow: auto;
+
+            li {
+              line-height: 40px;
+              border-bottom: 1px solid #ddd;
+              &:last-child {
+                border-bottom:none;
+              }
+            }
+
+          }
+        }
+        .search {
+          width: 160px;
+          line-height: 30px;
+          background-color: #ff0000;
+          color:#fff;
+          border-radius: 5px;
+        }
+
+      }
+    }
+
+    .content_income {
+      height: 350px;
+      overflow: auto;
+      ul {
+        margin: 5px;
+        li {
+          padding: 5px;
+          background-color: #fff;
+          border-radius: 8px;
+          margin-bottom: 5px;
+        }
+      }
+    }
+  }
+
+</style>

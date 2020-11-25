@@ -1,0 +1,558 @@
+<template>
+  <div class="red-detail" v-if="redMessage">
+    <i class="icon-set" @click="setModalState('redDetailState')"></i>
+    <div class="red-detail-head">
+      <div class="red-detial-div">
+        <div>
+          <img :src="redMessage.base.avatar" alt="">
+        </div>
+      </div>
+      <p class="red-name">{{redMessage.base.username}}发的红包1</p>
+      <p class="red-name" v-if="redMessage.base.reperson == 0 && redMessage.base.isexpired == 1">红包已抢完</p>
+      <p class="red-name" v-else>{{redMessage.grab.tip}}</p>
+      <p class="red-total" v-if="redMessage.base.type != 1 && redMessage.grab.money != 0">共{{redMessage.grab.money}}元</p>
+
+      <div class="flex-around game-niuniu" v-if="redMessage.base.type == 2">
+        <div>庄：<span class="orange">{{redMessage.base.bwp}} </span>胜</div>
+        <div class="orange" v-if="alltime > 1 && redMessage.base.reperson != 0">
+          剩余时间{{m1}}{{m2}}:{{s1}}{{s2}}
+        </div>
+        <div class="orange" v-else>游戏已结束</div>
+
+        <div>闲：<span class="orange">{{redMessage.base.pwb}} </span>胜</div>
+      </div>
+      <div class="game-saolei" v-if="redMessage.base.type == 1">
+        <img :src="getSaolei(redMessage.base.dval*1)" alt="" >
+      </div>
+      <div class="game-saolei on" :class="{dragon: redMessage.grab.money > 0}"  v-if="redMessage.base.type == 3">
+        <img src="@/assets/red/open_dragon.png" alt="">
+        <div v-if="redMessage.base.noc == 2">最佳手气接龙</div>
+        <div v-else>最差手气接龙</div>
+      </div>
+
+    </div>
+      <div class="content-deital flex">
+
+        <p>已领取：{{redMessage.base.person - redMessage.base.reperson}}/{{redMessage.base.person}}个，
+          共 {{(redMessage.base.total - redMessage.base.retotal).toFixed(2)}}/{{redMessage.base.total}}元</p>
+        <span @click="lookPlay()" v-if="redMessage.base.type != 0">玩法</span>
+      </div>
+    <div class="red-detail-content" :style="redMessage.base.type == 3||redMessage.base.type == 1 ? {'height':285+'px'}:{'height':400+'px'}">
+      <!--扫雷-->
+      <ul v-if="redMessage.base.type == 1">
+        <!-- 免死 -->
+        <li v-for="(item,index) in redMessage.list">
+          <div class="getname">
+            <img src="@/assets/red/ms.png" alt="" v-if="index==0 && redMessage.base.isfirst == 1">
+            <img :src="item.avatar" alt="" v-else>
+            <div class="getniu">
+              <div>
+                <p v-if="index==0 && redMessage.base.isfirst == 1">免死</p>
+                <p v-else>{{item.username}}</p>
+              </div>
+              <p class="get-p">{{item.time}}</p>
+            </div>
+          </div>
+
+          <div class="niu" >
+            <!--雷红包显示图片 -->
+            <img src="@/assets/red/lei.png" alt=""
+                 v-if="(redMessage.base.isfirst == 0 && item.fval == 2) || (redMessage.base.isfirst == 1 && index != 0 && item.fval == 2)">
+            <p>
+              <!--扫雷红包显示 -->
+              {{item.money}}
+            </p>
+
+          </div>
+        </li>
+      </ul>
+      <!--接龙-->
+      <ul v-else-if="redMessage.base.type == 3">
+        <!-- 免死 -->
+        <li v-for="(item,index) in redMessage.list">
+          <div class="getname">
+            <img src="@/assets/red/ms.png" alt="" v-if="index==1 && redMessage.base.isfirst == 1">
+            <img :src="item.avatar" alt="" v-else>
+            <div class="getniu">
+              <div>
+                <p v-if="index==1 && redMessage.base.isfirst == 1">免死</p>
+                <p v-else>{{item.username}}</p>
+              </div>
+              <p class="get-p">{{item.time}}</p>
+            </div>
+          </div>
+
+          <div class="niu" >
+            <p>
+              {{item.money}}
+              <br>
+              <span class="orange" v-if="redMessage.base.noc == 2 && item.fval == 2">手气最佳</span>
+              <span class="orange" v-if="redMessage.base.noc == 1 && item.fval == 2">手气最差</span>
+            </p>
+          </div>
+        </li>
+      </ul>
+      <!--普通和牛牛-->
+      <ul class="hongbao_box" v-else :style="total>1 ? {'height':350+'px'} : {'height':400+'px','border-bottom':'none'}">
+        <li v-for="(item,index) in list">
+          <div class="getname">
+            <img :src="item.avatar" alt="">
+            <div class="getniu">
+              <div>
+                <p>{{item.username}}</p>
+                <!-- 庄显示 -->
+                <img src="@/assets/red/zhuan.png" alt="" v-if="index == 0 && item.type == 2">
+              </div>
+              <p class="get-p">{{item.time}}</p>
+            </div>
+          </div>
+
+          <div class="niu" >
+            <p>
+              {{item.money}}
+              <br>
+              <span v-if="redMessage.base.maxval == item.money && item.type == 0" class="orange">手气最佳</span>
+            </p>
+            <!--牛牛红包时显示 -->
+            <img :src="getNiuNiu(item.fval*1)" alt="" v-if="item.type == 2">
+          </div>
+        </li>
+        <p class="get-p tc" v-if="redTimeState">未领取的红包，将于{{redTime}}发起退款</p>
+      </ul>
+
+      <div class="box_bot" v-if="total>1">
+
+        <el-pagination
+                background
+                :page-size="15"
+                :pager-count="5"
+                @current-change="currentPage"
+                layout="prev, pager, next"
+                :total= totalPages>
+        </el-pagination>
+
+      </div>
+
+    </div>
+
+    <wx-wanfa-detail :dialogData ="dialogData" v-if="dialogData.visible"></wx-wanfa-detail>
+
+  </div>
+</template>
+
+<script>
+  import {mapState,mapMutations,mapActions,mapGetters} from 'vuex'
+  import {getchar,getSession2} from '@/common/common'
+  export default {
+    data () {
+      return {
+        timer:null,
+        h1:0,
+        h2:0,
+        m1:0,
+        m2:0,
+        s1:0,
+        s2:0,
+        alltime:0,
+        redMessage:{
+          grab:'',
+          base:'',
+        },
+        pageData:{
+          page:1,
+          repcode:''
+        },
+        totalPages:'',
+        total:'',
+        list:[],
+        dialogData:{
+          visible:false,
+          id:''
+        }
+      }
+    },
+    computed:{
+      ...mapState([
+        "wechatIMstore"
+      ]),
+      ...mapGetters([
+
+      ]),
+      redTime(){
+        if(this.redMessage.base.hltime > 60){
+          let time = this.redMessage.base.hltime / 60
+          return parseInt(time) + '小时'
+        }else{
+          return this.redMessage.base.hltime + '分钟'
+        }
+      },
+      packInfo(){
+        return this.wechatIMstore.sendRedPackMessage
+      },
+      redTimeState(){
+        if((this.redMessage.base.type == 2 && (this.alltime < 2 || this.redMessage.base.reperson == 0)) || (this.redMessage.base.type == 1 && (this.alltime < 2 || this.redMessage.base.reperson == 0))){
+          return false
+        }else{
+          return true
+        }
+      },
+//      redMessage(){
+//        return this.wechatIMstore.redPackDetailIm
+//      },
+      redTime(){
+        if(this.redMessage.base.hltime > 60){
+          let time = this.redMessage.base.hltime / 60
+          return parseInt(time) + '小时'
+        }else{
+          return this.redMessage.base.hltime + '分钟'
+        }
+      }
+    },
+    watch: {
+
+    },
+    beforeDestroy(){
+      clearTimeout(this.timer)
+    },
+    created () {
+      this.pageData.repcode = this.packInfo.repcode;
+      // this.pageData.repcode = 'hb05e45073691d95';
+      let par = {
+        token:getSession2('token'),
+        repcode:this.packInfo.repcode,
+        // repcode:'hb05e45073691d95',
+        gtype:this.wechatIMstore.getOrCheck,
+        qtype: 1,
+        compatible:2
+      }
+      this.getRedPackAction(par).then((data)=>{
+        this.redMessage.grab = data.grab;
+
+        this.getListData();
+      })
+
+    },
+    mounted () {
+
+    },
+    methods:{
+      ...mapActions([
+        "getRedPackAction",
+        "getbRedEnvelopeImList"
+      ]),
+      ...mapMutations([
+        "setModalState",
+        "setRedHuiIm",
+        "setBullDataIm",
+        "setChatGameState"
+      ]),
+      currentPage(val) {
+        this.pageData.page = val;
+        this.getListData();
+        // console.log(`当前页: ${val}`);
+      },
+      getListData() {
+        this.getbRedEnvelopeImList(this.pageData)
+                .then(data=>{
+                  if(!data.base || !data.list) return;
+                  this.redMessage.base = data.base;
+                  this.totalPages = this.redMessage.base.person*1 - this.redMessage.base.reperson*1;
+                  this.total = data.totalPages;
+                  this.list = data.list;
+                  this.alltime = this.redMessage.base.expired - this.redMessage.base.time
+                  this.setChatGameState({data:data,type:1,chatType:2})
+                  if(data.base.type == 2){
+                    this.setBullDataIm({code:this.wechatIMstore.redUnique_value,detail:data})
+                  }else{
+                    this.setRedHuiIm({code:this.wechatIMstore.redUnique_value})
+                  }
+                  this.timeDown()
+                })
+
+
+      },
+      lookPlay(){
+        this.dialogData.visible = true;
+        switch (this.redMessage.base.type) {
+          case 1: this.dialogData.id = 12;break;
+          case 2: this.dialogData.id = 13;break;
+          case 3: this.dialogData.id = 14;break;
+        }
+      },
+      timeDown(){
+        if(this.alltime>1){
+          this.timer = setTimeout(()=>{
+            this.alltime--
+            this.timeDown()
+            this.lessen(this.alltime)
+          },1000)
+        }else{
+          clearTimeout(this.timer)
+        }
+
+      },
+      lessen (time) {
+        var t = Math.abs(time * 1000) || 0;
+        var h, m, s;
+        //计算开奖倒计时
+        h = Math.floor(t / 1000 / 60 / 60 % 24);
+        var day = Math.floor(t / 1000 / 60 / 60 / 24) || 0;
+        h = h + day * 24;
+        if (h < 10) {
+          this.h1 = "0";
+          this.h2 = "" + h;
+        } else {
+          this.h1 = "" + Math.floor(h / 10);
+          this.h2 = "" + h % 10;
+        }
+        m = Math.floor(t / 1000 / 60 % 60);
+        if (m < 10) {
+          this.m1 = "0";
+          this.m2 = "" + m;
+        } else {
+          this.m1 = "" + Math.floor(m / 10);
+          this.m2 = "" + m % 10;
+        }
+        s = Math.floor(t / 1000 % 60);
+        if (s < 10) {
+          this.s1 = "0";
+          this.s2 = "" + s;
+        } else {
+          this.s1 = "" + Math.floor(s / 10);
+          this.s2 = "" + s % 10;
+        }
+        // console.log("时间",state.h1,state.h2,state.m1,state.m2,state.s1,state.s2)
+
+      },
+
+      getNiuNiu(i){
+        return require('@/assets/red/niu' + i + '.png') || require('@/assets/red/niu.png')
+      },
+      getSaolei(i){
+        return require('@/assets/red/lei'+ i + '.png') || require('@/assets/red/lei.png')
+      },
+    },
+  }
+</script>
+<style lang="less" scoped>
+.game-saolei{
+  text-align: center;
+  padding: 20px 0;
+  img{
+    display: inline-block;
+    width: 80px;
+    margin-left: 20px;
+  }
+
+}
+.bl-red{
+  color: #E64949;
+  position: relative;
+}
+.red-img{
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin:10px 15px 5px 0;
+}
+.noneGet{
+  justify-content: center;
+  padding: 10px 0;
+}
+.icon-set{
+  width: 40px;
+  height: 40px;
+  background: url('../../../assets/weChat/close.png') no-repeat;
+  background-size: 20px 20px;
+  display: inline-block;
+  background-position: center center;
+  float: right;
+  cursor: pointer;
+}
+.bestluck{
+  margin-right: 15px;
+  color: #C30000;
+  font-size: 14px;
+  .crown{
+    width: 25px;
+    height: 16px;
+    background: url('../../../assets/weChat/crown.png') no-repeat;
+    background-size: 22px 22px;
+    display: inline-block;
+    background-position: center center;
+    cursor: pointer;
+    position: absolute;
+    left: -26px;
+    top: 3px;
+  }
+}
+.red-detail {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 120;
+  font-size:15px;
+  width: 400px;
+  background-color: #ffffff;
+  border-radius: 5px;
+    .red-detail-head{
+      color: #F8F7F7;
+      /*background-image: url('../../../assets/weChat/image.jpg');*/
+      background-color:#DA5443;
+      border-top-left-radius: 5px;
+      border-top-right-radius: 5px;
+      background-size: cover;
+      .red-detial-div{
+        width: 100%;
+        text-align: center;
+        padding-top: 15px;
+        div{
+          text-align: center;
+          width: 66px;
+          height: 66px;
+          border-radius: 50%;
+          background-color: #F8F7F7;
+          margin:auto;
+          img{
+            margin-top: 3px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+          }
+        }
+      }
+      p{
+        text-align: center;
+      }
+      .red-name{
+        font-size: 18px;
+      }
+      .red-total{
+        padding-bottom: 10px;
+        color: #FDE443;
+        font-size: 22px;
+      }
+      .game-niuniu {
+        color:#FDE443;
+        width:100%;
+        font-size: 14px;
+        line-height: 30px;
+      }
+
+    }
+    .content-deital{
+      padding: 5px 20px;
+      justify-content: space-between;
+      border-bottom: 1px solid #F8F7F7;
+      font-size: 14px;
+      span {
+        color:#FF0000;
+        cursor: pointer;
+      }
+    }
+    .red-detail-content{
+      height: 285px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      position: relative;
+      ul{
+        padding:0 0 0 20px;
+          li{
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #eeeeee;
+            padding: 6px 0;
+            padding-right: 20px;
+            align-items: center;
+            div{
+              .accept-name{
+                font-size: 16px;
+                color: black;
+              }
+            }
+            .niu{
+              color: #333;
+              font-size: 16px;
+              >p{
+                display: flex;
+                align-items: center;
+              }
+            }
+            .getname{
+              font-size: 16px;
+              color: black;
+              display: flex;
+              justify-content: flex-start;
+              >img{
+                width: 50px;
+                height: 50px;
+                border-radius: 5px;
+              }
+              .getniu{
+                padding-top: 3px;
+                margin-left: 15px;
+                >div{
+                  display: flex;
+                  justify-content: flex-start;
+                  >img{
+                    width: 23px;
+                    height: 23px;
+                    margin-left: 5px;
+                    margin-top: 3px;
+                  }
+                }
+                >p{
+                  font-size: 14px;
+                  color: #999;
+                }
+
+
+              }
+            }
+            .niu{
+              display: flex;
+              justify-content: flex-start;
+              >img{
+                width: 30px;
+                height: 30px;
+                margin-left: 4px;
+                margin-right: 4px;
+              }
+            }
+            .red-price{
+              font-size: 14px;
+              p:first-child{
+                font-weight: bold;
+              }
+              p{
+                text-align: right;
+              }
+            }
+          }
+        }
+
+      ul.hongbao_box{
+        height: 350px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        border-bottom: 1px solid #eee;
+      }
+      .box_bot{
+        position: absolute;
+        bottom: 0;
+        width: 100%;
+        left: 0;
+        background: #fff;
+      }
+      .get-p.tc{
+        text-align: center;
+        color: #B0B0B0;
+        line-height: 60px;
+        font-size: 14px;
+      }
+    }
+
+
+  }
+</style>

@@ -1,0 +1,35 @@
+import Vue from 'vue'
+import Router from 'vue-router'
+import weChatIndex from '@/components/weChatIndex'
+
+Vue.use(Router)
+
+export default new Router({
+  routes: [
+
+    // {
+    //   path: '/',
+    //   redirect: '/chat'
+    // },
+    {path: '/login', name: 'login',  component: resolve => require(['@/components/login.vue'], resolve), props: true},
+    {path: '/registered', name: 'registered',  component: resolve => require(['@/components/registered.vue'], resolve), props: true},
+    /*注册*/
+    /*注册推广连接*/
+    {path: '/index/user/r/:id', name: 'registeredIndex',  component: resolve => require(['@/components/registered.vue'], resolve), props: true},
+
+    {path: '/chat', name: 'weChatIndex', component: weChatIndex,children:[
+      {path: '/chat',name: 'chat',component: resolve => require(['@/components/weixinChatRoom/chatList/chat'], resolve),props: true},
+      {path: '/friend',name: 'friend',component: resolve => require(['@/components/weixinChatRoom/friendList/friend'], resolve),props: true},
+      {path: '/circle',name: 'circle',component: resolve => require(['@/components/weixinChatRoom/friendCircle/index'], resolve),props: true},
+    ]},
+
+    //{path: "*", redirect: "/"},
+    {path: '/dbTest', name:'dbTest', component: resolve => require(['@/components/dbTest'], resolve), props: true},
+
+    {path: "*", redirect: "/login"},
+
+
+  ],
+
+  linkActiveClass: 'active'
+})

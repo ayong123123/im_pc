@@ -1,0 +1,203 @@
+import './dggChat_pb.js'
+
+// 公告信息 common  接收、发送  get/set
+// const commonKey = [
+//     {key: 'type', get: 'getType', set: 'setType'},
+//     {key: 'code', get: 'getCode', set: 'setCode'},
+//     {key: 'control', get: 'getControl', set: 'setControl'},
+//     {key: 'action', get: 'getAction', set: 'setAction'},
+//     {key: 'create_time', get: 'getSendtime', set: 'setSendtime'},
+//     {key: 'unique_value', get: 'getUniqueid', set: 'setUniqueid'},
+//     {key: 'token', get: 'getToken', set: 'setToken'},
+//     {key: 'singlemessage', get: 'getSinglemessage', set: 'setSinglemessage'},
+//     {key: 'groupmessage', get: 'getGroupmessage', set: 'setGroupmessage'},
+//     {key: 'comment', get: 'getComment', set: 'setComment'}
+// ]
+
+//接收
+const commonKey = [
+  {key: 'type', get: 'getType', set: 'setType'},
+  {key: 'code', get: 'getCode', set: 'setCode'},
+  {key: 'control', get: 'getControl', set: 'setControl'},
+  {key: 'action', get: 'getAction', set: 'setAction'},
+  {key: 'create_time', get: 'getSendtime', set: 'setSendtime'},
+  {key: 'unique_value', get: 'getUniqueid', set: 'setUniqueid'},
+  {key: 'token', get: 'getToken', set: 'setToken'},
+  {key: 'from', get: 'getFrom', set: 'setFrom'},
+  {key: 'singlemessage', get: 'getSinglemessage', set: 'setSinglemessage'},
+  {key: 'groupmessage', get: 'getGroupmessage', set: 'setGroupmessage'},
+  {key: 'comment', get: 'getComment', set: 'setComment'},
+  {key: 'head_portrait', get: 'getAvatar', set: 'setAvatar'},
+  {key: 'nickname', get: 'getNickname', set: 'setNickname'},
+
+];
+
+//推送
+const commonKey2 = [
+  {key: 'type', get: 'getType', set: 'setType'},
+  // {key: 'code', get: 'getCode', set: 'setCode'},
+  {key: 'control', get: 'getControl', set: 'setControl'},
+  {key: 'action', get: 'getAction', set: 'setAction'},
+  {key: 'create_time', get: 'getSendtime', set: 'setSendtime'},
+  {key: 'unique_value', get: 'getUniqueid', set: 'setUniqueid'},
+  {key: 'token', get: 'getToken', set: 'setToken'},
+  {key: 'from', get: 'getFrom', set: 'setFrom'},
+  {key: 'singlemessage', get: 'getSinglemessage', set: 'setSinglemessage'},
+  {key: 'groupmessage', get: 'getGroupmessage', set: 'setGroupmessage'},
+  {key: 'comment', get: 'getComment', set: 'setComment'},
+  {key: 'head_portrait', get: 'getAvatar', set: 'setAvatar'},
+  {key: 'nickname', get: 'getNickname', set: 'setNickname'},
+
+];
+// 单条信息对象key
+const singleKey = [
+  {key: 'sendid', get: 'getSendid', set: 'setSendid'},
+  {key: 'acceptid', get: 'getAcceptid', set: 'setAcceptid'},
+  {key: 'content', get: 'getContent', set: 'setContent'},
+  {key: 'comment', get: 'getComment', set: 'setComment'}
+];
+
+// 群消息对象key
+const groupKey = [
+  {key: 'sendid', get: 'getSendid', set: 'setSendid'},
+  {key: 'groupid', get: 'getGroupid', set: 'setGroupid'},
+  {key: 'content', get: 'getContent', set: 'setContent'},
+  {key: 'comment', get: 'getComment', set: 'setComment'},
+  {key: 'groupName', get: 'getGroupname', set: 'setGroupname'},
+  {key: 'groupPeoples', get: 'getGrouppeoples', set: 'setGrouppeoples'},
+];
+
+// 获取单聊 群聊消息对象的类
+class msgListClass {
+  protoMsg = null
+  list = []
+  constructor (type = 9, protoObj) {
+    if (type == 9) {
+      this.protoMsg = protoObj || new proto.DggChat.DggChatSingleMessage()
+      this.list = singleKey
+    }
+    if (type == 10) {
+      this.protoMsg = protoObj || new proto.DggChat.DggChatGroupMessage()
+      this.list = groupKey
+    }
+  }
+
+  get () {
+    let { list, protoMsg } = this
+    let msgList = {}
+    for (let k in list) {
+      let key = list[k].key
+      let getFunc = list[k].get
+      msgList[key] = protoMsg[getFunc]()
+    }
+    return msgList
+  }
+
+  set (msg) {
+    let { list, protoMsg } = this
+    for (let k in msg) {
+      let temp = list.filter(r => r.key == k)
+      // console.log("temp",temp)
+      let setFunc = temp[0] ? temp[0].set : null
+      // console.log("setFunc",setFunc)
+      protoMsg[setFunc](msg[k])
+    }
+    // console.log("protoMsg",protoMsg,this)
+  }
+};
+
+/**
+ * @description: // 设置发送消息  type=9单聊  10为群聊  默认为单聊
+ * @param {type} // cmMsg为公共消息对象 msg为单聊或群聊对象
+ * @return: unit8Array
+ */
+export const setBefferMsg = (cmMsg, msg, type = 9) => {
+  // console.log("xxxxxx",cmMsg,msg,type)
+  // 获取公用信息函数体
+  let commonMsg = new proto.DggChat.DggCommon()
+  // 获取
+  let msgFunc = new msgListClass(type)
+  // 设置内容消息
+  msgFunc.set(msg);
+  // console.log("____msgFunc____",msgFunc,msg);
+  for (let k in cmMsg) {
+    let temp = commonKey2.filter(r => r.key == k)
+    let setFunc = temp[0] ? temp[0].set : null;
+    // console.log(type,k)
+    if (type == 9 && k == 'singlemessage') {
+      // console.log("_______",msgFunc,msgFunc.protoMsg)
+      commonMsg[setFunc](msgFunc.protoMsg)
+      // console.log("msgFunc.protoMsg",msgFunc.protoMsg)
+    } else if (type == 10 && k == 'groupmessage') {
+      commonMsg[setFunc](msgFunc.protoMsg)
+    } else {
+      commonMsg[setFunc](cmMsg[k])
+    }
+  }
+
+  // console.log("转换完成",commonMsg)
+  return commonMsg.serializeBinary()
+}
+
+/**
+ * @description: // 将unit8Array数组转换成对象
+ * @param {array} unit8Array
+ * @return: object
+ */
+export const getBefferMsg = (unit8Array) => {
+  let list = new proto.DggChat.DggCommon.deserializeBinary(unit8Array)
+  // console.log(list)
+  let obj = {}
+  for (let k in commonKey) {
+    let key = commonKey[k].key
+    let temp = commonKey.filter(r => r.key == key)
+    let func = temp[0] ? temp[0].get : null
+    let value = ""
+    if (func) {
+      value = list[func]()
+    }
+    obj[key] = value
+  }
+  // 转换单聊
+  if(obj.singlemessage) {
+    let single = new msgListClass(9, obj.singlemessage);
+    obj.singlemessage = single.get();
+  }
+  // 转换群聊
+  if (obj.groupmessage) {
+    let group = new msgListClass(10,obj.groupmessage);
+    obj.groupmessage = group.get();
+  }
+  // console.log(obj)
+  return obj;
+}
+
+/**
+ * @description: // 获得客服端发来的消息
+ * @param {string}  data 为后台返回来的数据
+ * @return: object
+ */
+export const getResponeMsg = (data) => {
+
+  // let decoder=proto.DggChat.DggCommon.deserializeBinary(data);
+  // console.log(decoder)
+  // for (var i in this.acceptType.single){
+  //   if(decoder.getType()==this.acceptType.single[i].type){
+  //     this.singleAcceptMessage=decoder.getSinglemessage().getContent();
+  //     this.singleAcceptType=decoder.getType();
+  //   }
+  // }
+  // for (var j in this.acceptType.group){
+  //   if(decoder.getType()==this.acceptType.group[j].type){
+  //     this.groupAcceptMessage=decoder.getGroupmessage().getContent();
+  //     this.groupAcceptType=decoder.getType();
+  //   }
+  // }
+  // console.log(str)
+  // 将乱码数据转换成utf-8
+  // let encoder = new TextEncoder('utf8');
+  // let unit8Array = encoder.encode(data)
+  // 返回转换成功的对象数据
+  // return decoder;
+  return getBefferMsg(data)
+}

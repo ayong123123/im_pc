@@ -1,0 +1,519 @@
+a {
+  text-decoration: none;
+  color: inherit;
+}
+#app {
+  color: #666666;
+}
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  border: 0;
+  outline: none;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+html,
+body {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  height: 100%;
+}
+body {
+  -webkit-overflow-scrolling: touch;
+  overflow-scrolling: touch;
+}
+ul,
+li {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+button {
+  background: none;
+}
+/* 设置滚动条的样式 */
+::-webkit-scrollbar {
+  width: 8px;
+}
+/* 滚动条滑块 */
+::-webkit-scrollbar-thumb {
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.1);
+}
+img {
+  vertical-align: middle;
+}
+button,
+a,
+a:active,
+a:hover,
+a:focus,
+a:visited {
+  text-decoration: none;
+  outline: none;
+  border: none;
+}
+em,
+i,
+b,
+sub,
+sup {
+  font-style: normal;
+}
+button:focus {
+  outline: none;
+}
+input[type='number'],
+select {
+  -webkit-appearance: none;
+}
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+}
+/* 取消input自动填充背景色 */
+input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0px 1000px white inset;
+}
+a,
+button,
+input,
+textarea {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+.css {
+  /*设置内嵌的元素在 3D 空间如何呈现：保留 3D*/
+  -webkit-transform-style: preserve-3d;
+  /*（设置进行转换的元素的背面在面对用户时是否可见：隐藏）*/
+  -webkit-backface-visibility: hidden;
+}
+body {
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.6;
+}
+a {
+  color: #7e8c8d;
+  text-decoration: none;
+  -webkit-backface-visibility: hidden;
+}
+/* 文字溢出 */
+.long-text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.color-gray {
+  color: gray;
+}
+.color-phone {
+  color: #556F96;
+}
+.point {
+  cursor: pointer;
+}
+.break-all {
+  word-break: break-all;
+  word-wrap: break-word;
+}
+/* 弹性布局 */
+.flex-shrink0 {
+  flex-shrink: 0;
+}
+.flex {
+  display: -ms-flexbox;
+  display: -webkit-flex;
+  /* Safari */
+  display: flex;
+  align-items: center;
+}
+.inline-flex {
+  display: -ms-flexbox;
+  display: -webkit-inline-flex;
+  /* Safari */
+  display: inline-flex;
+  align-items: center;
+}
+.flex-warp,
+.flex-wrap {
+  flex-wrap: wrap;
+}
+.flex-center {
+  display: -ms-flexbox;
+  display: -webkit-flex;
+  /* Safari */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.flex-between {
+  display: -ms-flexbox;
+  display: -webkit-flex;
+  /* Safari */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.flex-start {
+  display: -ms-flexbox;
+  display: -webkit-flex;
+  /* Safari */
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+}
+.flex-around {
+  display: -ms-flexbox;
+  display: -webkit-flex;
+  /* Safari */
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+.flex-column {
+  display: -ms-flexbox;
+  display: -webkit-flex;
+  /* Safari */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.flex-column-center {
+  display: -ms-flexbox;
+  display: -webkit-flex;
+  /* Safari */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.flex-1 {
+  flex: 1;
+}
+.wechat-home {
+  width: 100%;
+  height: 100%;
+  overflow-y: hidden;
+  background-image: url('../assets/weChat/chat_bg.png');
+  background-size: cover;
+}
+.chat-content {
+  display: flex;
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  margin: auto;
+  width: 860px;
+  height: 600px;
+  background-color: #fff;
+  vertical-align: inherit;
+}
+.chat-content .sidebar {
+  width: 60px;
+  height: 600px;
+  background-color: #2b2c2f;
+}
+.chat-content .chat-right {
+  flex: 1;
+  height: 600px;
+  background: #F5F5F5;
+}
+.blackColor {
+  color: #000000;
+}
+.user-chat-message {
+  width: 100%;
+  height: 450px;
+}
+.user-chat-message .header {
+  height: 60px;
+  padding: 28px 0 0 30px;
+  box-sizing: border-box;
+  border-bottom: 1px solid #e7e7e7;
+}
+.user-chat-message .header .friendname {
+  font-size: 18px;
+}
+.user-chat-message .header .chat-more-icon {
+  width: 24px;
+  height: 24px;
+  margin-right: 5px;
+  background-image: url('../assets/weChat/chat_more.png');
+  background-size: 100% 100%;
+  cursor: pointer;
+}
+.user-chat-message .message-wrapper {
+  min-height: 390px;
+  max-height: 390px;
+  padding: 10px 15px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  border-bottom: 1px solid #e7e7e7;
+}
+.user-chat-message .message-wrapper .message {
+  margin-bottom: 15px;
+}
+.user-chat-message .message-wrapper .time {
+  width: 100%;
+  font-size: 12px;
+  margin: 7px auto;
+  text-align: center;
+}
+.user-chat-message .message-wrapper .time span {
+  display: inline-block;
+  padding: 4px 6px;
+  color: #fff;
+  border-radius: 3px;
+  background-color: #dcdcdc;
+}
+.user-chat-message .message-wrapper .main .avatar {
+  float: left;
+  margin-left: 15px;
+  border-radius: 3px;
+}
+.user-chat-message .message-wrapper .main .content {
+  display: inline-block;
+  margin-left: 10px;
+  position: relative;
+  padding: 6px 10px;
+  max-width: 330px;
+  min-height: 36px;
+  line-height: 24px;
+  box-sizing: border-box;
+  font-size: 14px;
+  text-align: left;
+  word-break: break-all;
+  background-color: #fafafa;
+  border-radius: 4px;
+}
+.user-chat-message .message-wrapper .main .content:before {
+  content: " ";
+  position: absolute;
+  top: 12px;
+  right: 100%;
+  border: 6px solid transparent;
+  border-right-color: #fafafa;
+}
+.user-chat-message .message-wrapper .main .chat-img {
+  display: inline-block;
+  margin-left: 10px;
+  background-color: #fff;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.user-chat-message .message-wrapper .main .chat-img img {
+  width: 100px;
+  height: 100px;
+}
+.user-chat-message .message-wrapper .main .chat-red-pack {
+  cursor: pointer;
+  display: inline-block;
+  margin-left: 10px;
+}
+.user-chat-message .message-wrapper .main .chat-red-pack .red-envelopes {
+  position: relative;
+  display: flex;
+  padding-top: 12px;
+  height: 78px;
+  width: 240px;
+  text-align: left;
+  background-color: #FA9D3D;
+  border-top-left-radius: 5px ;
+  border-top-right-radius: 5px ;
+}
+.user-chat-message .message-wrapper .main .chat-red-pack .red-envelopes:before {
+  content: " ";
+  position: absolute;
+  top: 12px;
+  right: 100%;
+  border: 6px solid transparent;
+  border-right-color: #FA9D3D;
+}
+.user-chat-message .message-wrapper .main .chat-red-pack .red-envelopes img {
+  width: 52px;
+  height: 52px;
+}
+.user-chat-message .message-wrapper .main .chat-red-pack .red-envelopes .red-envelopes-message {
+  padding-left: 5px;
+  color: #f6f6f6;
+}
+.user-chat-message .message-wrapper .main .chat-red-pack .red-envelopes .red-envelopes-message div {
+  font-size: 18px;
+  font-weight: 500;
+}
+.user-chat-message .message-wrapper .main .chat-red-pack .red-envelopes .red-envelopes-message span {
+  font-size: 13px;
+}
+.user-chat-message .message-wrapper .main .chat-red-pack > p {
+  height: 22px;
+  line-height: 22px;
+  padding-left: 15px;
+  font-size: 12px;
+  text-align: left;
+  background-color: #fff;
+  border-bottom-left-radius: 5px ;
+  border-bottom-right-radius: 5px ;
+}
+.user-chat-message .message-wrapper .self {
+  text-align: right;
+}
+.user-chat-message .message-wrapper .self .avatar {
+  float: right;
+  margin: 0 15px;
+}
+.user-chat-message .message-wrapper .self .content {
+  background-color: #b2e281;
+}
+.user-chat-message .message-wrapper .self .content:before {
+  right: -12px;
+  vertical-align: middle;
+  border-right-color: transparent;
+  border-left-color: #b2e281;
+}
+.user-chat-message .message-wrapper .self .chat-red-pack .red-envelopes:before {
+  content: " ";
+  position: absolute;
+  top: 12px;
+  left: 100%;
+  border: 6px solid transparent;
+  border-left-color: #F8AF50;
+}
+.user-chat-message .message-wrapper .self .chat-red-pack p {
+  text-align: left;
+}
+.submitLogin {
+  width: 100%;
+  background: #333;
+  border-color: #333;
+  font-weight: bold;
+  border-radius: 0;
+  line-height: 40px;
+  position: relative;
+  font-size: 16px;
+  color: #fff;
+}
+.wx-login .el-form-item {
+  margin-top: 40px;
+}
+.wx-login .el-form-item .el-form-item__content {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+}
+.wx-login .el-form-item .el-form-item__content .icon {
+  width: 14%;
+  background: #333!important;
+  text-align: center;
+  height: 40px;
+}
+.wx-login .el-form-item .el-form-item__content .icon i {
+  font-size: 22px;
+  color: #fff;
+}
+.wx-login .el-form-item .el-form-item__content .el-input__inner {
+  border-radius: 0;
+  border-left: none;
+}
+.wx-login .el-form-item .el-button {
+  width: 100%;
+  background: #333;
+  border-color: #333;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 0;
+}
+.wx-login .el-form-item.gender {
+  margin: 0;
+  font-size: 16px;
+}
+.wx-login .el-form-item.gender .el-form-item__label {
+  width: 140px;
+  color: #333;
+  font-size: 16px;
+}
+.wx-login .el-form-item.gender .el-form-item__content {
+  padding-top: 12px;
+}
+.wx-login .el-form-item.gender .el-form-item__content .el-radio__label {
+  color: #333;
+  font-size: 16px;
+}
+.editor-box .el-cascader {
+  width: 100%;
+}
+.resetpwd-wrap .el-dialog__body {
+  padding: 0 20px 15px;
+}
+.resetpwd-wrap .resetpwd-box .el-form-item {
+  margin-top: 30px;
+  display: flex;
+  justify-content: space-between;
+}
+.resetpwd-wrap .resetpwd-box .el-form-item .el-form-item__label {
+  width: 20%;
+  text-align: right;
+  padding: 0;
+}
+.resetpwd-wrap .resetpwd-box .el-form-item .el-form-item__content {
+  width: 80%;
+}
+.resetpwd-wrap .resetpwd-box .el-form-item.footer {
+  margin-top: 15px;
+}
+.resetpwd-wrap .resetpwd-box .el-form-item.footer .el-form-item__content {
+  display: flex;
+  justify-content: center;
+}
+.el-dialog__headerbtn:focus .el-dialog__close,
+.el-dialog__headerbtn:hover .el-dialog__close,
+.el-radio__input.is-checked + .el-radio__label,
+.el-cascader-node.in-active-path,
+.el-cascader-node.is-active,
+.el-cascader-node.is-selectable.in-checked-path {
+  color: #1aad19;
+}
+.el-radio__inner:hover,
+.el-input.is-active .el-input__inner,
+.el-input__inner:focus,
+.el-cascader .el-input .el-input__inner:focus,
+.el-cascader .el-input.is-focus .el-input__inner {
+  border-color: #1aad19;
+}
+.el-button--default:hover,
+.el-button--default:focus {
+  color: #1aad19;
+  border-color: #1aad19;
+  background-color: #fff;
+}
+.el-button--primary,
+.el-button--primary:hover,
+.el-radio__input.is-checked .el-radio__inner {
+  background-color: #1aad19!important;
+  border-color: #1aad19;
+  color: #fff!important;
+}
+.content-upload div ul .el-upload-list__item {
+  width: 120px;
+  height: 120px;
+}
+.content-upload div .el-upload--picture-card {
+  width: 120px;
+  height: 120px;
+  line-height: 120px;
+}
+.commentsleft .el-textarea textarea {
+  resize: none;
+  width: 450px;
+  min-height: 36px;
+  height: 36px!important;
+}
+.shade {
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
